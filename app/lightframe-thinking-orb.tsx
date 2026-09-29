@@ -13,20 +13,6 @@ const SPARKS: Spark[] = [
   { x: 18, y: 49, width: 8, height: 12, phase: 3.5 },
 ];
 
-function spectrumColor(position: number) {
-  const wrapped = ((position % 1) + 1) % 1;
-  const index = wrapped * COLORS.length;
-  const first = COLORS[Math.floor(index)];
-  const second = COLORS[(Math.floor(index) + 1) % COLORS.length];
-  const mix = index - Math.floor(index);
-  const channel = (offset: number) => {
-    const from = parseInt(first.slice(offset, offset + 2), 16);
-    const to = parseInt(second.slice(offset, offset + 2), 16);
-    return Math.round(from + (to - from) * mix);
-  };
-  return `rgb(${channel(1)} ${channel(3)} ${channel(5)})`;
-}
-
 function traceSpark(context: CanvasRenderingContext2D, width: number, height: number) {
   // Concave curves make the four tapered rays meet in a soft, luminous core.
   context.beginPath();
@@ -40,18 +26,20 @@ function traceSpark(context: CanvasRenderingContext2D, width: number, height: nu
 
 function paintSpark(context: CanvasRenderingContext2D, spark: Spark, time: number) {
   const breath = 1 + Math.sin(time * 2.1 + spark.phase) * 0.055;
-  const colorPhase = time * 0.12 + spark.phase * 0.07;
+  const angle = time * 1.25 + spark.phase * 0.34;
   context.save();
   context.translate(spark.x, spark.y);
   context.scale(breath, breath);
   traceSpark(context, spark.width, spark.height);
 
-  const gradient = context.createLinearGradient(-spark.width, -spark.height, spark.width, spark.height);
-  for (let index = 0; index <= 3; index += 1) {
-    gradient.addColorStop(index / 3, spectrumColor(colorPhase + index * 0.11));
-  }
+  // Place every brand color across the luminous core, not across the long
+  // needle tips; otherwise almost the entire visible body looks monochrome.
+  const gradientX = Math.cos(angle) * spark.width * 0.44;
+  const gradientY = Math.sin(angle) * spark.height * 0.34;
+  const gradient = context.createLinearGradient(-gradientX, -gradientY, gradientX, gradientY);
+  COLORS.forEach((color, index) => gradient.addColorStop(index / (COLORS.length - 1), color));
   context.fillStyle = gradient;
-  context.shadowColor = "rgba(167, 74, 255, 0.62)";
+  context.shadowColor = COLORS[3];
   context.shadowBlur = spark.width > 10 ? 10 : 6;
   context.fill();
 
@@ -60,19 +48,6 @@ function paintSpark(context: CanvasRenderingContext2D, spark: Spark, time: numbe
   context.lineWidth = 0.65;
   context.stroke();
 
-  // A moving highlight gives the gradient a glint without changing the silhouette.
-  const highlight = context.createRadialGradient(
-    Math.sin(time * 1.2 + spark.phase) * spark.width * 0.38,
-    -spark.height * 0.14,
-    0,
-    0,
-    0,
-    spark.width * 0.88,
-  );
-  highlight.addColorStop(0, "rgba(255, 255, 255, 0.78)");
-  highlight.addColorStop(1, "rgba(255, 255, 255, 0)");
-  context.fillStyle = highlight;
-  context.fill();
   context.restore();
 }
 
