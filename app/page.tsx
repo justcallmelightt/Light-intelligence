@@ -9,7 +9,6 @@ import {
   useState,
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ThinkingOrb } from "thinking-orbs";
 import {
   ArrowDown,
   ArrowUp,
@@ -31,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import WikiWorkspace from "./wiki-workspace";
+import { LightframeThinkingOrb } from "./lightframe-thinking-orb";
 import {
   MAX_PERSONA_EXAMPLES,
   type PersonaExample,
@@ -806,7 +806,7 @@ export default function Home() {
                     role="status"
                     aria-live="polite"
                   >
-                    <ThinkingOrb state="working" size={20} theme="auto" aria-hidden="true" />
+                    <LightframeThinkingOrb />
                     <span>답변을 준비하고 있어</span>
                   </motion.div>
                 )}
