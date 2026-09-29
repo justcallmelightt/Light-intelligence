@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { ThinkingOrb } from "thinking-orbs";
 import {
   ArrowDown,
   ArrowUp,
@@ -308,6 +309,9 @@ export default function Home() {
   const motionTransition = reduceMotion
     ? { duration: 0.15 }
     : { type: "spring" as const, stiffness: 420, damping: 41, mass: 1 };
+  const waitingForFirstToken =
+    isResponding &&
+    (messages.at(-1)?.role !== "assistant" || !messages.at(-1)?.content);
 
   const submitMessage = async (rawValue?: string) => {
     const content = (rawValue ?? input).trim();
@@ -673,7 +677,9 @@ export default function Home() {
             ) : (
               <div className="message-list" aria-busy={isResponding}>
                 <AnimatePresence initial={false}>
-                  {messages.map((message) => (
+                  {messages.filter((message) => !(
+                    isResponding && message.role === "assistant" && !message.content
+                  )).map((message) => (
                     <motion.article
                       className={`message message-${message.role}`}
                       key={message.id}
@@ -791,23 +797,17 @@ export default function Home() {
                   ))}
                 </AnimatePresence>
 
-                {isResponding && (
+                {waitingForFirstToken && (
                   <motion.div
                     className="matching-state"
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={motionTransition}
                     role="status"
+                    aria-live="polite"
                   >
-                    <span className="mini-mark" aria-hidden="true">
-                      Y
-                    </span>
-                    <span className="matching-dots" aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                    </span>
-                    관련된 기억과 기준을 연결하고 있어
+                    <ThinkingOrb state="working" size={20} theme="auto" aria-hidden="true" />
+                    <span>답변을 준비하고 있어</span>
                   </motion.div>
                 )}
               </div>
