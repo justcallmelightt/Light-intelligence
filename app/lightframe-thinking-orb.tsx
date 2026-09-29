@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 
 const SIZE = 64;
 const COLORS = ["#007c70", "#1737d7", "#7b14ed", "#dd19e9", "#f06ca8", "#ffdc58", "#c8c5ee"];
+const RGB_COLORS = COLORS.map((color) => [1, 3, 5].map((offset) => parseInt(color.slice(offset, offset + 2), 16)));
+const GRADIENT_STEPS = 24;
+const GRADIENT_CYCLES_PER_SECOND = 0.22;
 
 type Spark = { x: number; y: number; width: number; height: number; phase: number };
 
@@ -12,6 +15,16 @@ const SPARKS: Spark[] = [
   { x: 13, y: 15, width: 8, height: 14, phase: 1.8 },
   { x: 18, y: 49, width: 8, height: 12, phase: 3.5 },
 ];
+
+function spectrumColor(position: number) {
+  const wrapped = ((position % 1) + 1) % 1;
+  const scaled = wrapped * RGB_COLORS.length;
+  const start = Math.floor(scaled);
+  const blend = scaled - start;
+  const from = RGB_COLORS[start];
+  const to = RGB_COLORS[(start + 1) % RGB_COLORS.length];
+  return `rgb(${from.map((channel, index) => Math.round(channel + (to[index] - channel) * blend)).join(" ")})`;
+}
 
 function traceSpark(context: CanvasRenderingContext2D, width: number, height: number) {
   // Concave curves make the four tapered rays meet in a soft, luminous core.
@@ -26,18 +39,20 @@ function traceSpark(context: CanvasRenderingContext2D, width: number, height: nu
 
 function paintSpark(context: CanvasRenderingContext2D, spark: Spark, time: number) {
   const breath = 1 + Math.sin(time * 2.1 + spark.phase) * 0.055;
-  const angle = time * 1.25 + spark.phase * 0.34;
   context.save();
   context.translate(spark.x, spark.y);
   context.scale(breath, breath);
   traceSpark(context, spark.width, spark.height);
 
-  // Place every brand color across the luminous core, not across the long
-  // needle tips; otherwise almost the entire visible body looks monochrome.
-  const gradientX = Math.cos(angle) * spark.width * 0.44;
-  const gradientY = Math.sin(angle) * spark.height * 0.34;
-  const gradient = context.createLinearGradient(-gradientX, -gradientY, gradientX, gradientY);
-  COLORS.forEach((color, index) => gradient.addColorStop(index / (COLORS.length - 1), color));
+  // Shift the palette left-to-right through a fixed horizontal gradient.
+  // Wrapping the color sampling keeps the loop seamless without reversing.
+  const gradientX = spark.width * 0.44;
+  const gradient = context.createLinearGradient(-gradientX, 0, gradientX, 0);
+  const phase = time * GRADIENT_CYCLES_PER_SECOND - spark.phase * 0.04;
+  for (let index = 0; index <= GRADIENT_STEPS; index += 1) {
+    const stop = index / GRADIENT_STEPS;
+    gradient.addColorStop(stop, spectrumColor(stop - phase));
+  }
   context.fillStyle = gradient;
   context.shadowColor = COLORS[3];
   context.shadowBlur = spark.width > 10 ? 10 : 6;
