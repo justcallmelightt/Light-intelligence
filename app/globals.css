@@ -1110,6 +1110,33 @@ button:not(:disabled) {
   font-weight: 560;
 }
 
+.matching-state-text {
+  background: linear-gradient(
+    105deg,
+    var(--text-secondary) 28%,
+    var(--text-primary) 48%,
+    var(--text-secondary) 68%
+  );
+  background-size: 250% 100%;
+  background-position: 100% center;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: matching-text-light 2.2s ease-in-out infinite;
+}
+
+@keyframes matching-text-light {
+  to { background-position: -100% center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matching-state-text {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+}
+
 .lightframe-thinking-orb-shell {
   position: relative;
   display: block;

@@ -8,6 +8,11 @@ const RGB_COLORS = COLORS.map((color) => [1, 3, 5].map((offset) => parseInt(colo
 const GRADIENT_STEPS = 32;
 const GRADIENT_CYCLES_PER_SECOND = 0.22;
 const VISIBLE_SPECTRUM = 0.78;
+const TEXTURE_POINTS = Array.from({ length: 110 }, (_, index) => ({
+  x: ((index * 37.73) % 1) * SIZE,
+  y: ((index * 19.19) % 1) * SIZE,
+  radius: index % 7 === 0 ? 0.48 : 0.28,
+}));
 
 type Spark = { x: number; y: number; width: number; height: number; phase: number };
 
@@ -56,6 +61,34 @@ function paintSparks(context: CanvasRenderingContext2D, time: number) {
   context.shadowColor = COLORS[3];
   context.shadowBlur = 8;
   context.fill();
+
+  // Clip the light and fine grain to the filled silhouettes: dimension without
+  // restoring the bright outline that made the stars look flat and sticker-like.
+  context.save();
+  context.shadowBlur = 0;
+  context.clip();
+
+  const sheen = context.createRadialGradient(27, 17, 2, 34, 31, 37);
+  sheen.addColorStop(0, "rgba(255, 255, 255, 0.28)");
+  sheen.addColorStop(0.42, "rgba(255, 255, 255, 0.055)");
+  sheen.addColorStop(1, "rgba(255, 255, 255, 0)");
+  context.fillStyle = sheen;
+  context.fillRect(0, 0, SIZE, SIZE);
+
+  const depth = context.createLinearGradient(12, 8, 58, 57);
+  depth.addColorStop(0, "rgba(255, 255, 255, 0.06)");
+  depth.addColorStop(0.58, "rgba(0, 0, 0, 0)");
+  depth.addColorStop(1, "rgba(0, 0, 0, 0.2)");
+  context.fillStyle = depth;
+  context.fillRect(0, 0, SIZE, SIZE);
+
+  context.fillStyle = "rgba(255, 255, 255, 0.085)";
+  for (const point of TEXTURE_POINTS) {
+    context.beginPath();
+    context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
+    context.fill();
+  }
+  context.restore();
 }
 
 export function LightframeThinkingOrb() {

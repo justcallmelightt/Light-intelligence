@@ -43,6 +43,7 @@ import {
 } from "./persona-engine";
 
 type FeedbackValue = "same" | "different";
+type ThinkingPhase = "persona" | "thinking" | null;
 
 type ChatMessage = {
   id: string;
@@ -140,6 +141,7 @@ export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isResponding, setIsResponding] = useState(false);
+  const [thinkingPhase, setThinkingPhase] = useState<ThinkingPhase>(null);
   const [hydrated, setHydrated] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [settings, setSettings] =
@@ -327,6 +329,7 @@ export default function Home() {
     setMessages(conversation);
     setInput("");
     setIsResponding(true);
+    setThinkingPhase("persona");
     shouldAutoScrollRef.current = true;
 
     const localResult = getPersonaResponse(content, settings);
@@ -350,6 +353,7 @@ export default function Home() {
       });
 
       if (!response.ok || !response.body) throw new Error("Gemini unavailable");
+      setThinkingPhase("thinking");
 
       const assistantMessage: ChatMessage = {
         id: assistantId,
@@ -367,6 +371,7 @@ export default function Home() {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
+        if (chunk) setThinkingPhase(null);
         setMessages((current) =>
           current.map((message) =>
             message.id === assistantId
@@ -394,6 +399,7 @@ export default function Home() {
       if (responseControllerRef.current === controller) {
         responseControllerRef.current = null;
         setIsResponding(false);
+        setThinkingPhase(null);
       }
     }
   };
@@ -414,6 +420,7 @@ export default function Home() {
     responseControllerRef.current?.abort();
     responseControllerRef.current = null;
     setIsResponding(false);
+    setThinkingPhase(null);
   };
 
   const startNewChat = () => {
@@ -797,7 +804,7 @@ export default function Home() {
                   ))}
                 </AnimatePresence>
 
-                {waitingForFirstToken && (
+                {waitingForFirstToken && thinkingPhase && (
                   <motion.div
                     className="matching-state"
                     initial={{ opacity: 0, y: 6 }}
@@ -807,7 +814,9 @@ export default function Home() {
                     aria-live="polite"
                   >
                     <LightframeThinkingOrb />
-                    <span>답변을 준비하고 있어</span>
+                    <span className="matching-state-text" key={thinkingPhase}>
+                      {thinkingPhase === "persona" ? "율을 불러오는 중" : "생각 중"}
+                    </span>
                   </motion.div>
                 )}
               </div>
