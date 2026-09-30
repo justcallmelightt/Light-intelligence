@@ -5,8 +5,9 @@ import { useEffect, useRef } from "react";
 const SIZE = 64;
 const COLORS = ["#007c70", "#1737d7", "#7b14ed", "#dd19e9", "#f06ca8", "#ffdc58", "#c8c5ee"];
 const RGB_COLORS = COLORS.map((color) => [1, 3, 5].map((offset) => parseInt(color.slice(offset, offset + 2), 16)));
-const GRADIENT_STEPS = 24;
+const GRADIENT_STEPS = 32;
 const GRADIENT_CYCLES_PER_SECOND = 0.22;
+const VISIBLE_SPECTRUM = 0.78;
 
 type Spark = { x: number; y: number; width: number; height: number; phase: number };
 
@@ -26,36 +27,34 @@ function spectrumColor(position: number) {
   return `rgb(${from.map((channel, index) => Math.round(channel + (to[index] - channel) * blend)).join(" ")})`;
 }
 
-function traceSpark(context: CanvasRenderingContext2D, width: number, height: number) {
+function traceSpark(context: CanvasRenderingContext2D, spark: Spark, time: number) {
   // Concave curves make the four tapered rays meet in a soft, luminous core.
-  context.beginPath();
-  context.moveTo(0, -height);
-  context.bezierCurveTo(width * 0.13, -height * 0.22, width * 0.22, -height * 0.13, width, 0);
-  context.bezierCurveTo(width * 0.22, height * 0.13, width * 0.13, height * 0.22, 0, height);
-  context.bezierCurveTo(-width * 0.13, height * 0.22, -width * 0.22, height * 0.13, -width, 0);
-  context.bezierCurveTo(-width * 0.22, -height * 0.13, -width * 0.13, -height * 0.22, 0, -height);
+  const breath = 1 + Math.sin(time * 2.1 + spark.phase) * 0.055;
+  const width = spark.width * breath;
+  const height = spark.height * breath;
+  const { x, y } = spark;
+  context.moveTo(x, y - height);
+  context.bezierCurveTo(x + width * 0.13, y - height * 0.22, x + width * 0.22, y - height * 0.13, x + width, y);
+  context.bezierCurveTo(x + width * 0.22, y + height * 0.13, x + width * 0.13, y + height * 0.22, x, y + height);
+  context.bezierCurveTo(x - width * 0.13, y + height * 0.22, x - width * 0.22, y + height * 0.13, x - width, y);
+  context.bezierCurveTo(x - width * 0.22, y - height * 0.13, x - width * 0.13, y - height * 0.22, x, y - height);
   context.closePath();
 }
 
-function paintSpark(context: CanvasRenderingContext2D, spark: Spark, time: number) {
-  const breath = 1 + Math.sin(time * 2.1 + spark.phase) * 0.055;
-  context.save();
-  context.translate(spark.x, spark.y);
-  context.scale(breath, breath);
-  traceSpark(context, spark.width, spark.height);
-
-  // Shift the palette left-to-right through a fixed horizontal gradient.
-  // Wrapping the color sampling keeps the loop seamless without reversing.
-  const gradientX = spark.width * 0.44;
-  const gradient = context.createLinearGradient(-gradientX, 0, gradientX, 0);
-  const phase = time * GRADIENT_CYCLES_PER_SECOND - spark.phase * 0.04;
+function paintSparks(context: CanvasRenderingContext2D, time: number) {
+  // One diagonal field spans all three sparks. Less than one palette cycle is
+  // visible at once, so no hue appears as a second, disconnected band.
+  const gradient = context.createLinearGradient(6, 58, 60, 6);
+  const phase = time * GRADIENT_CYCLES_PER_SECOND;
   for (let index = 0; index <= GRADIENT_STEPS; index += 1) {
     const stop = index / GRADIENT_STEPS;
-    gradient.addColorStop(stop, spectrumColor(stop - phase));
+    gradient.addColorStop(stop, spectrumColor(stop * VISIBLE_SPECTRUM - phase));
   }
+  context.beginPath();
+  for (const spark of SPARKS) traceSpark(context, spark, time);
   context.fillStyle = gradient;
   context.shadowColor = COLORS[3];
-  context.shadowBlur = spark.width > 10 ? 10 : 6;
+  context.shadowBlur = 8;
   context.fill();
 
   context.shadowBlur = 0;
@@ -63,7 +62,6 @@ function paintSpark(context: CanvasRenderingContext2D, spark: Spark, time: numbe
   context.lineWidth = 0.65;
   context.stroke();
 
-  context.restore();
 }
 
 export function LightframeThinkingOrb() {
@@ -86,7 +84,7 @@ export function LightframeThinkingOrb() {
     const paint = (time: number) => {
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.clearRect(0, 0, SIZE, SIZE);
-      for (const spark of SPARKS) paintSpark(context, spark, time);
+      paintSparks(context, time);
     };
 
     const stop = () => {

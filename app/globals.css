@@ -1116,28 +1116,12 @@ button:not(:disabled) {
   width: 64px;
   height: 64px;
   flex: 0 0 64px;
-  isolation: isolate;
-}
-
-.lightframe-thinking-orb-shell::before {
-  position: absolute;
-  inset: 13px;
-  z-index: -1;
-  border-radius: 50%;
-  background: linear-gradient(102deg, #007c70, #1737d7 22%, #7b14ed 40%, #dd19e9 55%, #f06ca8 69%, #ffdc58 84%, #c8c5ee);
-  filter: blur(13px);
-  opacity: 0.4;
-  content: "";
 }
 
 .lightframe-thinking-orb {
   display: block;
   width: 64px;
   height: 64px;
-}
-
-:root[data-theme="light"] .lightframe-thinking-orb-shell::before {
-  opacity: 0.25;
 }
 
 .new-answer-button {
