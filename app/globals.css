@@ -1122,11 +1122,17 @@ button:not(:disabled) {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: matching-text-light 2.2s ease-in-out infinite;
+  animation: matching-text-light 2.4s linear infinite;
 }
 
 @keyframes matching-text-light {
-  to { background-position: -100% center; }
+  0%, 12% {
+    background-position: 100% center;
+  }
+
+  76%, 100% {
+    background-position: 0% center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

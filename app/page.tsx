@@ -814,7 +814,7 @@ export default function Home() {
                     aria-live="polite"
                   >
                     <LightframeThinkingOrb />
-                    <span className="matching-state-text" key={thinkingPhase}>
+                    <span className="matching-state-text">
                       {thinkingPhase === "persona" ? "율을 불러오는 중" : "생각 중"}
                     </span>
                   </motion.div>
