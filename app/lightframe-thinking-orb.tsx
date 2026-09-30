@@ -56,12 +56,6 @@ function paintSparks(context: CanvasRenderingContext2D, time: number) {
   context.shadowColor = COLORS[3];
   context.shadowBlur = 8;
   context.fill();
-
-  context.shadowBlur = 0;
-  context.strokeStyle = "rgba(255, 255, 255, 0.58)";
-  context.lineWidth = 0.65;
-  context.stroke();
-
 }
 
 export function LightframeThinkingOrb() {
