@@ -1103,8 +1103,8 @@ button:not(:disabled) {
 .matching-state {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-height: 64px;
+  gap: 9px;
+  min-height: 40px;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 560;
@@ -1140,15 +1140,15 @@ button:not(:disabled) {
 .lightframe-thinking-orb-shell {
   position: relative;
   display: block;
-  width: 64px;
-  height: 64px;
-  flex: 0 0 64px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
 }
 
 .lightframe-thinking-orb {
   display: block;
-  width: 64px;
-  height: 64px;
+  width: 36px;
+  height: 36px;
 }
 
 .new-answer-button {
