@@ -8,10 +8,12 @@ const RGB_COLORS = COLORS.map((color) => [1, 3, 5].map((offset) => parseInt(colo
 const GRADIENT_STEPS = 32;
 const GRADIENT_CYCLES_PER_SECOND = 0.22;
 const VISIBLE_SPECTRUM = 0.78;
-const TEXTURE_POINTS = Array.from({ length: 110 }, (_, index) => ({
-  x: ((index * 37.73) % 1) * SIZE,
-  y: ((index * 19.19) % 1) * SIZE,
-  radius: index % 7 === 0 ? 0.48 : 0.28,
+const fraction = (value: number) => value - Math.floor(value);
+const TEXTURE_POINTS = Array.from({ length: 220 }, (_, index) => ({
+  x: fraction(Math.sin(index * 127.1 + 4.7) * 43758.5453) * SIZE,
+  y: fraction(Math.sin(index * 311.7 + 8.3) * 22578.1459) * SIZE,
+  radius: index % 9 === 0 ? 0.7 : 0.42,
+  light: index % 3 !== 0,
 }));
 
 type Spark = { x: number; y: number; width: number; height: number; phase: number };
@@ -82,8 +84,19 @@ function paintSparks(context: CanvasRenderingContext2D, time: number) {
   context.fillStyle = depth;
   context.fillRect(0, 0, SIZE, SIZE);
 
-  context.fillStyle = "rgba(255, 255, 255, 0.085)";
+  const satin = context.createLinearGradient(17, 58, 53, 5);
+  satin.addColorStop(0, "rgba(255, 255, 255, 0)");
+  satin.addColorStop(0.43, "rgba(255, 255, 255, 0.015)");
+  satin.addColorStop(0.53, "rgba(255, 255, 255, 0.16)");
+  satin.addColorStop(0.65, "rgba(255, 255, 255, 0)");
+  satin.addColorStop(1, "rgba(255, 255, 255, 0)");
+  context.fillStyle = satin;
+  context.fillRect(0, 0, SIZE, SIZE);
+
   for (const point of TEXTURE_POINTS) {
+    context.fillStyle = point.light
+      ? "rgba(255, 255, 255, 0.14)"
+      : "rgba(6, 8, 24, 0.1)";
     context.beginPath();
     context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
     context.fill();
