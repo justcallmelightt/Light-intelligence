@@ -136,6 +136,32 @@ const readStoredValue = <T,>(key: string, fallback: T): T => {
   }
 };
 
+function WaitingStatus({ phase }: { phase: Exclude<ThinkingPhase, null> }) {
+  const [elapsedTenths, setElapsedTenths] = useState(0);
+
+  useEffect(() => {
+    const startedAt = performance.now();
+    const timer = window.setInterval(() => {
+      setElapsedTenths(Math.floor((performance.now() - startedAt) / 100));
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <>
+      <LightframeThinkingOrb />
+      <span className="matching-state-text">
+        {phase === "persona" ? "율을 불러오는 중" : "생각 중"}
+      </span>
+      {elapsedTenths >= 30 && (
+        <span className="matching-state-elapsed" aria-hidden="true">
+          {(elapsedTenths / 10).toFixed(1)}초
+        </span>
+      )}
+    </>
+  );
+}
+
 export default function Home() {
   const reduceMotion = useReducedMotion();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -813,10 +839,7 @@ export default function Home() {
                     role="status"
                     aria-live="polite"
                   >
-                    <LightframeThinkingOrb />
-                    <span className="matching-state-text">
-                      {thinkingPhase === "persona" ? "율을 불러오는 중" : "생각 중"}
-                    </span>
+                    <WaitingStatus phase={thinkingPhase} />
                   </motion.div>
                 )}
               </div>

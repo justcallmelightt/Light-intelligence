@@ -1125,6 +1125,13 @@ button:not(:disabled) {
   animation: matching-text-light 2.4s linear infinite;
 }
 
+.matching-state-elapsed {
+  margin-left: 1px;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
 @keyframes matching-text-light {
   0%, 12% {
     background-position: 100% center;

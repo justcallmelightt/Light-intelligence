@@ -9,10 +9,10 @@ const GRADIENT_STEPS = 32;
 const GRADIENT_CYCLES_PER_SECOND = 0.22;
 const VISIBLE_SPECTRUM = 0.78;
 const fraction = (value: number) => value - Math.floor(value);
-const TEXTURE_POINTS = Array.from({ length: 220 }, (_, index) => ({
+const TEXTURE_POINTS = Array.from({ length: 130 }, (_, index) => ({
   x: fraction(Math.sin(index * 127.1 + 4.7) * 43758.5453) * SIZE,
   y: fraction(Math.sin(index * 311.7 + 8.3) * 22578.1459) * SIZE,
-  radius: index % 9 === 0 ? 0.7 : 0.42,
+  radius: index % 9 === 0 ? 1.05 : 0.68,
   light: index % 3 !== 0,
 }));
 
@@ -70,33 +70,55 @@ function paintSparks(context: CanvasRenderingContext2D, time: number) {
   context.shadowBlur = 0;
   context.clip();
 
-  const sheen = context.createRadialGradient(27, 17, 2, 34, 31, 37);
-  sheen.addColorStop(0, "rgba(255, 255, 255, 0.28)");
-  sheen.addColorStop(0.42, "rgba(255, 255, 255, 0.055)");
+  const sheen = context.createRadialGradient(35, 23, 1, 39, 32, 24);
+  sheen.addColorStop(0, "rgba(255, 255, 255, 0.48)");
+  sheen.addColorStop(0.38, "rgba(255, 255, 255, 0.18)");
   sheen.addColorStop(1, "rgba(255, 255, 255, 0)");
   context.fillStyle = sheen;
   context.fillRect(0, 0, SIZE, SIZE);
 
-  const depth = context.createLinearGradient(12, 8, 58, 57);
-  depth.addColorStop(0, "rgba(255, 255, 255, 0.06)");
-  depth.addColorStop(0.58, "rgba(0, 0, 0, 0)");
-  depth.addColorStop(1, "rgba(0, 0, 0, 0.2)");
+  const depth = context.createLinearGradient(19, 8, 52, 55);
+  depth.addColorStop(0, "rgba(255, 255, 255, 0.13)");
+  depth.addColorStop(0.48, "rgba(0, 0, 0, 0)");
+  depth.addColorStop(1, "rgba(5, 7, 25, 0.3)");
   context.fillStyle = depth;
   context.fillRect(0, 0, SIZE, SIZE);
 
   const satin = context.createLinearGradient(17, 58, 53, 5);
   satin.addColorStop(0, "rgba(255, 255, 255, 0)");
-  satin.addColorStop(0.43, "rgba(255, 255, 255, 0.015)");
-  satin.addColorStop(0.53, "rgba(255, 255, 255, 0.16)");
-  satin.addColorStop(0.65, "rgba(255, 255, 255, 0)");
+  satin.addColorStop(0.36, "rgba(255, 255, 255, 0.01)");
+  satin.addColorStop(0.52, "rgba(255, 255, 255, 0.25)");
+  satin.addColorStop(0.68, "rgba(255, 255, 255, 0)");
   satin.addColorStop(1, "rgba(255, 255, 255, 0)");
   context.fillStyle = satin;
   context.fillRect(0, 0, SIZE, SIZE);
 
+  // A broad inner facet survives the 36px display size, unlike sub-pixel grain.
+  context.beginPath();
+  context.moveTo(39, 8);
+  context.bezierCurveTo(38, 20, 36, 27, 39, 31);
+  context.bezierCurveTo(35, 31, 32, 29, 30, 26);
+  context.bezierCurveTo(35, 24, 38, 15, 39, 8);
+  context.closePath();
+  const facet = context.createLinearGradient(30, 11, 41, 32);
+  facet.addColorStop(0, "rgba(255, 255, 255, 0.04)");
+  facet.addColorStop(0.65, "rgba(255, 255, 255, 0.26)");
+  facet.addColorStop(1, "rgba(255, 255, 255, 0.05)");
+  context.fillStyle = facet;
+  context.fill();
+
+  context.beginPath();
+  context.moveTo(39, 31);
+  context.bezierCurveTo(45, 32, 49, 31, 54, 31);
+  context.bezierCurveTo(46, 35, 41, 44, 39, 54);
+  context.closePath();
+  context.fillStyle = "rgba(8, 11, 33, 0.13)";
+  context.fill();
+
   for (const point of TEXTURE_POINTS) {
     context.fillStyle = point.light
-      ? "rgba(255, 255, 255, 0.14)"
-      : "rgba(6, 8, 24, 0.1)";
+      ? "rgba(255, 255, 255, 0.2)"
+      : "rgba(6, 8, 24, 0.16)";
     context.beginPath();
     context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
     context.fill();
