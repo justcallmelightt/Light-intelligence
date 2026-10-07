@@ -192,10 +192,37 @@ export async function POST(request: Request) {
       messages,
       temperature: 0.85,
       maxOutputTokens: 1_200,
+      providerOptions: {
+        google: { thinkingConfig: { includeThoughts: true } },
+      },
     });
 
-    return result.toTextStreamResponse({
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const part of result.fullStream) {
+            if (part.type === "text-delta" || part.type === "reasoning-delta") {
+              controller.enqueue(encoder.encode(`${JSON.stringify({
+                type: part.type === "text-delta" ? "text" : "summary",
+                text: part.text,
+              })}\n`));
+            } else if (part.type === "error") {
+              controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error" })}\n`));
+            }
+          }
+        } catch (error) {
+          console.error("Gemini stream failed", error);
+          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error" })}\n`));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
       headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
         "Cache-Control": "no-store",
         "X-Light-Model": process.env.GEMINI_MODEL ?? "gemini-3.6-flash",
       },

@@ -71,7 +71,7 @@ test("keeps Persona evidence and privacy guardrails explicit", async () => {
   assert.match(page, /feedbackStorage/);
   assert.match(route, /GOOGLE_GENERATIVE_AI_API_KEY/);
   assert.match(route, /gemini-3\.6-flash/);
-  assert.match(route, /toTextStreamResponse/);
+  assert.match(route, /result\.fullStream/);
   assert.match(route, /readPersonaExamples/);
   assert.match(route, /MAX_INJECTED_PERSONA_EXAMPLES/);
   assert.match(systemPrompt, /실제 권율 본인이 아니라/);
@@ -94,4 +94,21 @@ test("keeps Persona evidence and privacy guardrails explicit", async () => {
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /safe-area-inset-bottom/);
   assert.match(css, /font-synthesis:\s*none/);
+});
+
+test("renders assistant Markdown without enabling raw HTML or unsafe links", async () => {
+  const [page, markdown, css] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/assistant-markdown.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /message\.role === "assistant"\s*\? <AssistantMarkdown content=\{message\.content\}/);
+  assert.match(page, /: message\.content/);
+  assert.match(markdown, /remarkPlugins=\{\[remarkGfm\]\}/);
+  assert.match(markdown, /skipHtml/);
+  assert.match(markdown, /urlTransform=\{defaultUrlTransform\}/);
+  assert.doesNotMatch(markdown, /rehypeRaw|dangerouslySetInnerHTML/);
+  assert.match(css, /\.message-assistant \.message-content pre/);
+  assert.match(css, /\.message-assistant \.message-content a:focus-visible/);
 });

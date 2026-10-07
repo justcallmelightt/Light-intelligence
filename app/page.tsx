@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import WikiWorkspace from "./wiki-workspace";
+import { AssistantMarkdown } from "./assistant-markdown";
 import { LightframeThinkingOrb } from "./lightframe-thinking-orb";
 import {
   MAX_PERSONA_EXAMPLES,
@@ -49,6 +50,7 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  thoughtSummary?: string;
   source?: "gemini" | "local";
   trace?: PersonaTrace;
   feedback?: FeedbackValue;
@@ -176,6 +178,7 @@ export default function Home() {
     "menu" | "inspector" | "settings" | null
   >(null);
   const [expandedTrace, setExpandedTrace] = useState<string | null>(null);
+  const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(
     null,
   );
@@ -393,19 +396,44 @@ export default function Home() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let pending = "";
+      let receivedText = false;
+      let streamFailed = false;
+      const consumeLine = (line: string) => {
+        if (!line.trim()) return;
+        const event = JSON.parse(line) as { type: string; text?: string };
+        if (event.type === "error") {
+          streamFailed = true;
+          return;
+        }
+        if (typeof event.text !== "string" || !event.text) return;
+        if (event.type === "text") {
+          receivedText = true;
+          setThinkingPhase(null);
+          setMessages((current) => current.map((message) =>
+            message.id === assistantId
+              ? { ...message, content: `${message.content}${event.text}` }
+              : message,
+          ));
+        } else if (event.type === "summary") {
+          setMessages((current) => current.map((message) =>
+            message.id === assistantId
+              ? { ...message, thoughtSummary: `${message.thoughtSummary ?? ""}${event.text}`.slice(0, 4_000) }
+              : message,
+          ));
+        }
+      };
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        if (chunk) setThinkingPhase(null);
-        setMessages((current) =>
-          current.map((message) =>
-            message.id === assistantId
-              ? { ...message, content: `${message.content}${chunk}` }
-              : message,
-          ),
-        );
+        pending += decoder.decode(value, { stream: true });
+        const lines = pending.split("\n");
+        pending = lines.pop() ?? "";
+        lines.forEach(consumeLine);
       }
+      pending += decoder.decode();
+      if (pending.trim()) consumeLine(pending);
+      if (streamFailed && !receivedText) throw new Error("Gemini stream failed");
     } catch (error) {
       if (controller.signal.aborted) return;
       const assistantMessage: ChatMessage = {
@@ -737,7 +765,30 @@ export default function Home() {
                           </span>
                         </div>
                       )}
-                      <div className="message-content">{message.content}</div>
+                      <div className="message-content">
+                        {message.role === "assistant"
+                          ? <AssistantMarkdown content={message.content} />
+                          : message.content}
+                      </div>
+
+                      {message.role === "assistant" && message.source === "gemini" && message.thoughtSummary?.trim() && (
+                        <div className="thought-summary">
+                          <button
+                            className="thought-summary-toggle pressable"
+                            type="button"
+                            aria-expanded={expandedSummary === message.id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setExpandedSummary((value) => value === message.id ? null : message.id);
+                            }}
+                          >
+                            생각 요약 <ChevronDown size={14} className={expandedSummary === message.id ? "is-rotated" : ""} />
+                          </button>
+                          {expandedSummary === message.id && (
+                            <p className="thought-summary-content">{message.thoughtSummary}</p>
+                          )}
+                        </div>
+                      )}
 
                       {message.role === "assistant" && message.trace && (
                         <div className="message-tools">
