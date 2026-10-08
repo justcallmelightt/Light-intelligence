@@ -7,6 +7,7 @@ import {
   type PersonaExample,
 } from "../../ai/persona-examples";
 import type { PersonaSettings } from "../../persona-engine";
+import { classifyGeminiError } from "../../chat-failure";
 
 export const maxDuration = 30;
 
@@ -208,12 +209,18 @@ export async function POST(request: Request) {
                 text: part.text,
               })}\n`));
             } else if (part.type === "error") {
-              controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error" })}\n`));
+              controller.enqueue(encoder.encode(`${JSON.stringify({
+                type: "error",
+                code: classifyGeminiError(part.error),
+              })}\n`));
             }
           }
         } catch (error) {
           console.error("Gemini stream failed", error);
-          controller.enqueue(encoder.encode(`${JSON.stringify({ type: "error" })}\n`));
+          controller.enqueue(encoder.encode(`${JSON.stringify({
+            type: "error",
+            code: classifyGeminiError(error),
+          })}\n`));
         } finally {
           controller.close();
         }

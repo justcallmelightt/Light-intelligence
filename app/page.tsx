@@ -33,6 +33,11 @@ import WikiWorkspace from "./wiki-workspace";
 import { AssistantMarkdown } from "./assistant-markdown";
 import { LightframeThinkingOrb } from "./lightframe-thinking-orb";
 import {
+  chatFailureMessage,
+  isChatFailureCode,
+  type ChatFailureCode,
+} from "./chat-failure";
+import {
   MAX_PERSONA_EXAMPLES,
   type PersonaExample,
 } from "./ai/persona-examples";
@@ -51,6 +56,7 @@ type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   thoughtSummary?: string;
+  fallbackCode?: ChatFailureCode;
   source?: "gemini" | "local";
   trace?: PersonaTrace;
   feedback?: FeedbackValue;
@@ -139,13 +145,14 @@ const readStoredValue = <T,>(key: string, fallback: T): T => {
 };
 
 function WaitingStatus({ phase }: { phase: Exclude<ThinkingPhase, null> }) {
-  const [elapsedTenths, setElapsedTenths] = useState(0);
+  const reduceMotion = useReducedMotion();
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
     const startedAt = performance.now();
     const timer = window.setInterval(() => {
-      setElapsedTenths(Math.floor((performance.now() - startedAt) / 100));
-    }, 100);
+      setElapsedSeconds(Math.floor((performance.now() - startedAt) / 1000));
+    }, 200);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -155,9 +162,26 @@ function WaitingStatus({ phase }: { phase: Exclude<ThinkingPhase, null> }) {
       <span className="matching-state-text">
         {phase === "persona" ? "율을 불러오는 중" : "생각 중"}
       </span>
-      {elapsedTenths >= 30 && (
+      {elapsedSeconds >= 3 && (
         <span className="matching-state-elapsed" aria-hidden="true">
-          {(elapsedTenths / 10).toFixed(1)}초
+          <span className="matching-state-digit">
+            <span className="matching-state-digit-sizer">{elapsedSeconds}</span>
+            <AnimatePresence initial={false}>
+              <motion.span
+                key={elapsedSeconds}
+                className="matching-state-digit-value"
+                initial={{ y: reduceMotion ? 0 : "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: reduceMotion ? 0 : "-100%", opacity: 0 }}
+                transition={reduceMotion
+                  ? { duration: 0.15 }
+                  : { type: "spring", stiffness: 420, damping: 42, mass: 1 }}
+              >
+                {elapsedSeconds}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+          초
         </span>
       )}
     </>
@@ -344,8 +368,21 @@ export default function Home() {
     isResponding &&
     (messages.at(-1)?.role !== "assistant" || !messages.at(-1)?.content);
 
-  const submitMessage = async (rawValue?: string) => {
-    const content = (rawValue ?? input).trim();
+  const submitMessage = async (rawValue?: string, retryMessageId?: string) => {
+    const retryIndex = retryMessageId
+      ? messages.findIndex((message) => message.id === retryMessageId)
+      : -1;
+    const retryOriginal = retryIndex === messages.length - 1
+      ? messages[retryIndex]
+      : undefined;
+    const retryPrompt = retryOriginal ? messages[retryIndex - 1] : undefined;
+    if (retryMessageId && (
+      retryOriginal?.role !== "assistant" ||
+      retryOriginal.source !== "local" ||
+      retryPrompt?.role !== "user"
+    )) return;
+
+    const content = (retryPrompt?.content ?? rawValue ?? input).trim();
     if (!content || isResponding) return;
 
     const userMessage: ChatMessage = {
@@ -354,17 +391,30 @@ export default function Home() {
       content,
     };
 
-    const conversation = [...messages, userMessage].slice(-16);
-    setMessages(conversation);
-    setInput("");
+    const conversation = retryOriginal
+      ? messages.slice(0, retryIndex).slice(-16)
+      : [...messages, userMessage].slice(-16);
+    const assistantId = retryOriginal?.id ?? createId();
+    if (retryOriginal) {
+      setMessages([...conversation, {
+        ...retryOriginal,
+        content: "",
+        source: "gemini",
+        fallbackCode: undefined,
+        thoughtSummary: undefined,
+      }]);
+    } else {
+      setMessages(conversation);
+      setInput("");
+    }
     setIsResponding(true);
     setThinkingPhase("persona");
     shouldAutoScrollRef.current = true;
 
     const localResult = getPersonaResponse(content, settings);
-    const assistantId = createId();
     const controller = new AbortController();
     responseControllerRef.current = controller;
+    let failureCode: ChatFailureCode = "NETWORK_ERROR";
 
     try {
       const response = await fetch("/api/chat", {
@@ -381,7 +431,20 @@ export default function Home() {
         signal: controller.signal,
       });
 
-      if (!response.ok || !response.body) throw new Error("Gemini unavailable");
+      if (!response.ok) {
+        const payload: unknown = await response.json().catch(() => null);
+        const code = payload && typeof payload === "object" && "code" in payload
+          ? payload.code
+          : null;
+        failureCode = isChatFailureCode(code)
+          ? code
+          : response.status === 429 ? "RATE_LIMITED" : "AI_UNAVAILABLE";
+        throw new Error(`Gemini request failed with HTTP ${response.status}`);
+      }
+      if (!response.body) {
+        failureCode = "AI_UNAVAILABLE";
+        throw new Error("Gemini response had no stream");
+      }
       setThinkingPhase("thinking");
 
       const assistantMessage: ChatMessage = {
@@ -391,19 +454,19 @@ export default function Home() {
         source: "gemini",
         trace: localResult.trace,
       };
-      setMessages((current) => [...current, assistantMessage]);
+      if (!retryOriginal) setMessages((current) => [...current, assistantMessage]);
       setSelectedMessageId(assistantId);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let pending = "";
       let receivedText = false;
-      let streamFailed = false;
+      let streamErrorCode: ChatFailureCode | null = null;
       const consumeLine = (line: string) => {
         if (!line.trim()) return;
-        const event = JSON.parse(line) as { type: string; text?: string };
+        const event = JSON.parse(line) as { type: string; text?: string; code?: unknown };
         if (event.type === "error") {
-          streamFailed = true;
+          streamErrorCode = isChatFailureCode(event.code) ? event.code : "AI_UNAVAILABLE";
           return;
         }
         if (typeof event.text !== "string" || !event.text) return;
@@ -433,15 +496,26 @@ export default function Home() {
       }
       pending += decoder.decode();
       if (pending.trim()) consumeLine(pending);
-      if (streamFailed && !receivedText) throw new Error("Gemini stream failed");
+      if (streamErrorCode || !receivedText) {
+        failureCode = streamErrorCode ?? "AI_UNAVAILABLE";
+        throw new Error("Gemini stream did not complete");
+      }
     } catch (error) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        if (retryOriginal) {
+          setMessages((current) => current.map((message) =>
+            message.id === assistantId ? retryOriginal : message,
+          ));
+        }
+        return;
+      }
       const assistantMessage: ChatMessage = {
         id: assistantId,
         role: "assistant",
         content: localResult.content,
         source: "local",
         trace: localResult.trace,
+        fallbackCode: failureCode,
       };
       setMessages((current) => {
         const withoutPartial = current.filter((message) => message.id !== assistantId);
@@ -770,6 +844,29 @@ export default function Home() {
                           ? <AssistantMarkdown content={message.content} />
                           : message.content}
                       </div>
+
+                      {message.role === "assistant" && message.source === "local" && (
+                        <div className="fallback-notice" role="note">
+                          <Info size={15} aria-hidden="true" />
+                          <div>
+                            <p>{chatFailureMessage(message.fallbackCode ?? "AI_UNAVAILABLE")}</p>
+                            {message.id === messages.at(-1)?.id && (
+                              <button
+                                className="fallback-retry pressable"
+                                type="button"
+                                disabled={isResponding}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  void submitMessage(undefined, message.id);
+                                }}
+                              >
+                                <RotateCcw size={13} aria-hidden="true" />
+                                Gemini로 다시 시도
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {message.role === "assistant" && message.source === "gemini" && message.thoughtSummary?.trim() && (
                         <div className="thought-summary">
