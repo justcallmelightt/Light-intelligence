@@ -1370,17 +1370,13 @@ button:not(:disabled) {
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 40px;
-  flex: 0 0 40px;
+  min-height: 40px;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 560;
 }
 
 .matching-state-text {
-  flex: 0 0 8.25em;
-  line-height: 1.4;
-  white-space: nowrap;
   background: linear-gradient(
     105deg,
     var(--text-secondary) 28%,
@@ -1397,31 +1393,44 @@ button:not(:disabled) {
 
 .matching-state-elapsed {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   margin-left: 1px;
   color: var(--text-tertiary);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.matching-state-digit {
+.matching-state-digits {
+  display: inline-flex;
+  align-items: center;
+  height: 1.2em;
+}
+
+.matching-state-digit-window {
   position: relative;
-  display: inline-block;
-  overflow: hidden;
-  line-height: 1.2;
-  vertical-align: bottom;
-}
-
-.matching-state-digit-sizer {
-  visibility: hidden;
-}
-
-.matching-state-digit-value {
-  position: absolute;
-  inset: 0;
   display: block;
-  text-align: right;
+  width: 0.64em;
+  height: 1.2em;
+  flex: 0 0 0.64em;
+  overflow: hidden;
+}
+
+.matching-state-digit-track {
+  position: absolute;
+  inset: 0 auto auto 0;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
   will-change: transform;
+}
+
+.matching-state-digit-row {
+  display: block;
+  height: 1.2em;
+  flex: 0 0 1.2em;
+  line-height: 1.2em;
+  text-align: right;
 }
 
 @keyframes matching-text-light {

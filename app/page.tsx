@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "motion/react";
 import {
   ArrowDown,
   ArrowUp,
@@ -144,8 +144,61 @@ const readStoredValue = <T,>(key: string, fallback: T): T => {
   }
 };
 
+const SECOND_DIGIT_ROWS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0] as const;
+const SECOND_DIGIT_ROW_EM = 1.2;
+
+function RollingSecondDigit({
+  step,
+  rollOnMount,
+  reduceMotion,
+}: {
+  step: number;
+  rollOnMount: boolean;
+  reduceMotion: boolean;
+}) {
+  const controls = useAnimationControls();
+  const previousStep = useRef(rollOnMount ? step - 1 : step);
+
+  useEffect(() => {
+    const from = previousStep.current;
+    if (from === step) return;
+    previousStep.current = step;
+
+    const digit = step % 10;
+    if (reduceMotion || step < from || step - from > 1) {
+      controls.stop();
+      controls.set({ y: `${-digit * SECOND_DIGIT_ROW_EM}em` });
+      return;
+    }
+
+    const targetRow = digit === 0 ? 10 : digit;
+    void controls.start({
+      y: `${-targetRow * SECOND_DIGIT_ROW_EM}em`,
+      transition: { type: "spring", stiffness: 420, damping: 42, mass: 1 },
+    }).then(() => {
+      if (targetRow === 10 && previousStep.current === step) {
+        controls.set({ y: "0em" });
+      }
+    });
+  }, [controls, reduceMotion, step]);
+
+  return (
+    <span className="matching-state-digit-window" aria-hidden="true">
+      <motion.span
+        className="matching-state-digit-track"
+        initial={{ y: `${-(rollOnMount ? 0 : step % 10) * SECOND_DIGIT_ROW_EM}em` }}
+        animate={controls}
+      >
+        {SECOND_DIGIT_ROWS.map((digit, index) => (
+          <span className="matching-state-digit-row" key={index}>{digit}</span>
+        ))}
+      </motion.span>
+    </span>
+  );
+}
+
 function WaitingStatus({ phase }: { phase: Exclude<ThinkingPhase, null> }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = Boolean(useReducedMotion());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   useEffect(() => {
@@ -163,22 +216,19 @@ function WaitingStatus({ phase }: { phase: Exclude<ThinkingPhase, null> }) {
         {phase === "persona" ? "율을 불러오는 중" : "생각 중"}
       </span>
       <span className="matching-state-elapsed" aria-hidden="true">
-          <span className="matching-state-digit">
-            <span className="matching-state-digit-sizer">{elapsedSeconds}</span>
-            <AnimatePresence initial={false}>
-              <motion.span
-                key={elapsedSeconds}
-                className="matching-state-digit-value"
-                initial={{ y: reduceMotion ? 0 : "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: reduceMotion ? 0 : "-100%", opacity: 0 }}
-                transition={reduceMotion
-                  ? { duration: 0.15 }
-                  : { type: "spring", stiffness: 420, damping: 42, mass: 1 }}
-              >
-                {elapsedSeconds}
-              </motion.span>
-            </AnimatePresence>
+          <span className="matching-state-digits">
+            {String(elapsedSeconds).split("").map((_, index, digits) => {
+              const place = digits.length - index - 1;
+              const placeValue = 10 ** place;
+              return (
+                <RollingSecondDigit
+                  key={place}
+                  step={Math.floor(elapsedSeconds / placeValue)}
+                  rollOnMount={place > 0 && elapsedSeconds === placeValue}
+                  reduceMotion={reduceMotion}
+                />
+              );
+            })}
           </span>
           초
       </span>
