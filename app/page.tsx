@@ -162,8 +162,7 @@ function WaitingStatus({ phase }: { phase: Exclude<ThinkingPhase, null> }) {
       <span className="matching-state-text">
         {phase === "persona" ? "율을 불러오는 중" : "생각 중"}
       </span>
-      {elapsedSeconds >= 3 && (
-        <span className="matching-state-elapsed" aria-hidden="true">
+      <span className="matching-state-elapsed" aria-hidden="true">
           <span className="matching-state-digit">
             <span className="matching-state-digit-sizer">{elapsedSeconds}</span>
             <AnimatePresence initial={false}>
@@ -182,8 +181,7 @@ function WaitingStatus({ phase }: { phase: Exclude<ThinkingPhase, null> }) {
             </AnimatePresence>
           </span>
           초
-        </span>
-      )}
+      </span>
     </>
   );
 }
@@ -839,11 +837,17 @@ export default function Home() {
                           </span>
                         </div>
                       )}
-                      <div className="message-content">
+                      <div className={`message-content ${isResponding && message.id === messages.at(-1)?.id && message.role === "assistant" && message.source === "gemini" ? "is-streaming" : ""}`}>
                         {message.role === "assistant"
                           ? <AssistantMarkdown content={message.content} />
                           : message.content}
                       </div>
+                      {message.role === "assistant" && message.source === "gemini" && isResponding && message.id === messages.at(-1)?.id && message.content && (
+                        <div className="streaming-status" role="status" aria-live="polite">
+                          <span className="streaming-status-pulse" aria-hidden="true" />
+                          답변 작성 중
+                        </div>
+                      )}
 
                       {message.role === "assistant" && message.source === "local" && (
                         <div className="fallback-notice" role="note">
@@ -874,16 +878,31 @@ export default function Home() {
                             className="thought-summary-toggle pressable"
                             type="button"
                             aria-expanded={expandedSummary === message.id}
+                            aria-controls={`thought-summary-${message.id}`}
                             onClick={(event) => {
                               event.stopPropagation();
                               setExpandedSummary((value) => value === message.id ? null : message.id);
                             }}
                           >
-                            생각 요약 <ChevronDown size={14} className={expandedSummary === message.id ? "is-rotated" : ""} />
+                            <span className="thought-summary-indicator" aria-hidden="true" />
+                            <span>생각 요약</span>
+                            <ChevronDown size={14} className={expandedSummary === message.id ? "is-rotated" : ""} aria-hidden="true" />
                           </button>
-                          {expandedSummary === message.id && (
-                            <p className="thought-summary-content">{message.thoughtSummary}</p>
-                          )}
+                          <AnimatePresence initial={false}>
+                            {expandedSummary === message.id && (
+                              <motion.div
+                                id={`thought-summary-${message.id}`}
+                                className="thought-summary-panel"
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: "auto" }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={motionTransition}
+                              >
+                                <p className="thought-summary-label">모델이 제공한 요약 · 내부 사고 원문이 아님</p>
+                                <p className="thought-summary-content">{message.thoughtSummary}</p>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       )}
 
@@ -1099,7 +1118,12 @@ export default function Home() {
               />
             )}
             {openPanel === "settings" && (
-              <SettingsContent settings={settings} onChange={setSettings} />
+              <SettingsContent
+                settings={settings}
+                onChange={setSettings}
+                theme={theme}
+                onThemeChange={setTheme}
+              />
             )}
           </PanelOverlay>
         )}
@@ -1223,9 +1247,13 @@ function InspectorContent({
 function SettingsContent({
   settings,
   onChange,
+  theme,
+  onThemeChange,
 }: {
   settings: PersonaSettings;
   onChange: (next: PersonaSettings) => void;
+  theme: "dark" | "light";
+  onThemeChange: (next: "dark" | "light") => void;
 }) {
   const controls: Array<{
     key: keyof PersonaSettings;
@@ -1249,10 +1277,29 @@ function SettingsContent({
   return (
     <div className="settings-content">
       <div className="panel-heading">
-        <p className="eyebrow">RESPONSE TUNING</p>
-        <h2>표현 강도</h2>
-        <p>말하는 방식만 조절해. 율의 기억·가치관·정체성을 바꾸지는 않아.</p>
+        <p className="eyebrow">PREFERENCES</p>
+        <h2>설정</h2>
+        <p>화면과 답변 방식을 내 취향에 맞게 조절해.</p>
       </div>
+      <section className="settings-section" aria-labelledby="appearance-title">
+        <div className="settings-section-heading">
+          <h3 id="appearance-title">화면</h3>
+          <p>선택한 테마는 이 브라우저에 저장돼.</p>
+        </div>
+        <div className="theme-choices" role="group" aria-label="화면 테마">
+          <button type="button" className={`theme-choice pressable ${theme === "dark" ? "is-selected" : ""}`} aria-pressed={theme === "dark"} onClick={() => onThemeChange("dark")}>
+            <Moon size={17} /> 다크 <Check size={15} className="theme-check" aria-hidden="true" />
+          </button>
+          <button type="button" className={`theme-choice pressable ${theme === "light" ? "is-selected" : ""}`} aria-pressed={theme === "light"} onClick={() => onThemeChange("light")}>
+            <Sun size={17} /> 라이트 <Check size={15} className="theme-check" aria-hidden="true" />
+          </button>
+        </div>
+      </section>
+      <section className="settings-section" aria-labelledby="response-title">
+        <div className="settings-section-heading">
+          <h3 id="response-title">답변 방식</h3>
+          <p>변경한 값은 다음 답변부터 적용돼. 율의 기억이나 정체성은 바뀌지 않아.</p>
+        </div>
       <div className="slider-stack">
         {controls.map((control) => (
           <label className="slider-row" key={control.key}>
@@ -1260,11 +1307,12 @@ function SettingsContent({
               <strong>{control.label}</strong>
               <small>{control.description}</small>
             </span>
-            <output>{settings[control.key]}</output>
+            <output>{settings[control.key]}%</output>
             <input
               type="range"
               min="20"
               max="100"
+              aria-label={control.label}
               value={settings[control.key]}
               onChange={(event) =>
                 onChange({
@@ -1280,9 +1328,12 @@ function SettingsContent({
         type="button"
         className="reset-settings pressable"
         onClick={() => onChange(DEFAULT_SETTINGS)}
+        disabled={Object.keys(DEFAULT_SETTINGS).every((key) => settings[key as keyof PersonaSettings] === DEFAULT_SETTINGS[key as keyof PersonaSettings])}
       >
-        <RotateCcw size={16} /> 기본값으로 되돌리기
+        <RotateCcw size={16} /> 답변 방식 기본값으로 되돌리기
       </button>
+      </section>
+      <p className="settings-storage-note"><Info size={14} aria-hidden="true" /> 이 설정은 현재 브라우저에만 저장돼. 다른 기기에는 자동으로 동기화되지 않아.</p>
     </div>
   );
 }
