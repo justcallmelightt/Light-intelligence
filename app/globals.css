@@ -1370,13 +1370,17 @@ button:not(:disabled) {
   display: flex;
   align-items: center;
   gap: 9px;
-  min-height: 40px;
+  height: 40px;
+  flex: 0 0 40px;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 560;
 }
 
 .matching-state-text {
+  flex: 0 0 8.25em;
+  line-height: 1.4;
+  white-space: nowrap;
   background: linear-gradient(
     105deg,
     var(--text-secondary) 28%,

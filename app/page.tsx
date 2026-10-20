@@ -216,7 +216,6 @@ export default function Home() {
   const responseControllerRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
 
   useEffect(() => {
@@ -320,16 +319,19 @@ export default function Home() {
 
   useEffect(() => {
     if (!messages.length) return;
+    const lastMessage = messages.at(-1);
+    if (isResponding && lastMessage?.role === "assistant" && !lastMessage.content) return;
     if (shouldAutoScrollRef.current) {
-      messagesEndRef.current?.scrollIntoView({
+      const scrollElement = scrollRef.current;
+      scrollElement?.scrollTo({
+        top: scrollElement.scrollHeight,
         behavior: reduceMotion ? "auto" : "smooth",
-        block: "end",
       });
       requestAnimationFrame(() => setHasUnseen(false));
     } else if (messages.at(-1)?.role === "assistant") {
       requestAnimationFrame(() => setHasUnseen(true));
     }
-  }, [messages, reduceMotion]);
+  }, [isResponding, messages, reduceMotion]);
 
   useEffect(
     () => () => {
@@ -642,9 +644,10 @@ export default function Home() {
 
   const jumpToLatest = () => {
     shouldAutoScrollRef.current = true;
-    messagesEndRef.current?.scrollIntoView({
+    const scrollElement = scrollRef.current;
+    scrollElement?.scrollTo({
+      top: scrollElement.scrollHeight,
       behavior: reduceMotion ? "auto" : "smooth",
-      block: "end",
     });
     setHasUnseen(false);
   };
@@ -1011,7 +1014,6 @@ export default function Home() {
                 )}
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
         </div>
 
