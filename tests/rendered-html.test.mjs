@@ -89,7 +89,17 @@ test("keeps Persona evidence and privacy guardrails explicit", async () => {
   assert.match(chatModels, /"gemini-3\.6-flash"/);
   assert.match(chatModels, /Lightning/);
   assert.match(chatModels, /Prism/);
-  assert.match(css, /\.composer\.is-prism/);
+  assert.match(css, /\.composer-prism-clip/);
+  assert.match(css, /\.composer-prism-canvas/);
+  assert.doesNotMatch(css, /prism-prompt-sweep/);
+  assert.match(page, /<PrismComposerSweep key=\{prismSweepId\} \/>/);
+  const prismSweep = await readFile(new URL("../app/prism-composer-sweep.tsx", import.meta.url), "utf8");
+  assert.match(prismSweep, /createShader\(/);
+  assert.match(prismSweep, /playSweep\(/);
+  assert.match(prismSweep, /sweepMs: 570/);
+  assert.match(prismSweep, /"#f6de5c"/);
+  assert.doesNotMatch(css, /--prism-band/);
+  assert.match(page, /setPrismSweepId\(\(current\) => current \+ 1\)/);
   const thinkingLogo = await readFile(
     new URL("../app/lightframe-thinking-orb.tsx", import.meta.url),
     "utf8",

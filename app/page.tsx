@@ -32,6 +32,7 @@ import {
 import WikiWorkspace from "./wiki-workspace";
 import { AssistantMarkdown } from "./assistant-markdown";
 import { LightframeThinkingOrb } from "./lightframe-thinking-orb";
+import { PrismComposerSweep } from "./prism-composer-sweep";
 import {
   chatFailureMessage,
   isChatFailureCode,
@@ -249,6 +250,7 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [chatModel, setChatModel] = useState<ChatModelId>(DEFAULT_CHAT_MODEL);
+  const [prismSweepId, setPrismSweepId] = useState(0);
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [settings, setSettings] =
     useState<PersonaSettings>(DEFAULT_SETTINGS);
@@ -1129,7 +1131,12 @@ export default function Home() {
         </AnimatePresence>
 
         <div className="composer-zone">
-          <form className={`composer ${chatModel === DEFAULT_CHAT_MODEL ? "is-prism" : ""}`} onSubmit={handleSubmit}>
+          <form className="composer" onSubmit={handleSubmit}>
+            {prismSweepId > 0 && (
+              <span className="composer-prism-clip" aria-hidden="true">
+                <PrismComposerSweep key={prismSweepId} />
+              </span>
+            )}
             <textarea
               ref={textareaRef}
               value={input}
@@ -1164,6 +1171,9 @@ export default function Home() {
                       aria-checked={chatModel === modelId}
                       onClick={() => {
                         setChatModel(modelId);
+                        if (modelId === DEFAULT_CHAT_MODEL) {
+                          setPrismSweepId((current) => current + 1);
+                        }
                         setModelMenuOpen(false);
                       }}
                     >

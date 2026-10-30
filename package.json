@@ -16,6 +16,7 @@
     "@ai-sdk/google": "^4.0.36",
     "@vercel/blob": "^2.8.0",
     "ai": "^7.0.55",
+    "glimm": "^0.3.1",
     "lucide-react": "^1.25.0",
     "motion": "^12.42.2",
     "next": "16.2.6",
