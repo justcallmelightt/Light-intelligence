@@ -1526,6 +1526,132 @@ button:not(:disabled) {
     inset 0 1px 0 color-mix(in srgb, var(--reflection) 24%, transparent);
   backdrop-filter: blur(28px) saturate(1.15);
   -webkit-backdrop-filter: blur(28px) saturate(1.15);
+  isolation: isolate;
+  transition: box-shadow 420ms ease, border-color 420ms ease;
+}
+
+.composer::before {
+  position: absolute;
+  z-index: 0;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(110deg,
+    rgba(0, 130, 84, 0.035),
+    rgba(1, 1, 217, 0.075) 30%,
+    rgba(129, 0, 255, 0.09) 50%,
+    rgba(233, 52, 247, 0.075) 70%,
+    rgba(246, 222, 92, 0.035));
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+.model-picker {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+}
+
+.model-picker-trigger {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 620;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.model-picker-trigger:hover,
+.model-picker-trigger[aria-expanded="true"] {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.model-picker-trigger:focus-visible,
+.model-picker-option:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.model-picker-trigger:disabled {
+  cursor: default;
+  opacity: 0.58;
+}
+
+.model-picker-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 10;
+  display: grid;
+  width: min(236px, calc(100vw - 40px));
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.3), inset 0 1px 0 color-mix(in srgb, var(--reflection) 20%, transparent);
+  backdrop-filter: blur(22px) saturate(1.2);
+  -webkit-backdrop-filter: blur(22px) saturate(1.2);
+  animation: model-menu-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.model-picker-option {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.model-picker-option:hover,
+.model-picker-option.is-selected {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.model-picker-option.is-selected > svg {
+  color: #b66cff;
+}
+
+.model-picker-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.model-picker-copy span + span,
+.model-picker-note {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: 480;
+}
+
+.model-picker-note {
+  padding: 5px 10px 3px;
+  border-top: 1px solid var(--hairline);
+}
+
+@keyframes model-menu-in {
+  from { opacity: 0; transform: translateY(5px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .composer:focus-within {
@@ -1535,7 +1661,39 @@ button:not(:disabled) {
     inset 0 1px 0 color-mix(in srgb, var(--reflection) 28%, transparent);
 }
 
+.composer.is-prism {
+  border-color: transparent;
+  background: linear-gradient(var(--surface-raised), var(--surface-raised)) padding-box,
+    linear-gradient(120deg, #008254, #0101d9 28%, #8100ff 48%, #e934f7 66%, #f6de5c 88%) border-box;
+  background-size: 100% 100%, 220% 100%;
+  background-position: 0 0, 100% 50%;
+  animation: prism-border-flow 6s ease-in-out infinite alternate;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22),
+    0 0 14px rgba(1, 1, 217, 0.16),
+    0 0 20px rgba(233, 52, 247, 0.13),
+    inset 0 1px 0 color-mix(in srgb, var(--reflection) 24%, transparent);
+}
+
+@keyframes prism-border-flow {
+  from { background-position: 0 0, 100% 50%; }
+  to { background-position: 0 0, 0 50%; }
+}
+
+.composer.is-prism::before {
+  opacity: 1;
+}
+
+.composer.is-prism:focus-within {
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25),
+    0 0 0 3px color-mix(in srgb, var(--focus) 12%, transparent),
+    0 0 18px rgba(1, 1, 217, 0.2),
+    0 0 25px rgba(233, 52, 247, 0.16),
+    inset 0 1px 0 color-mix(in srgb, var(--reflection) 28%, transparent);
+}
+
 .composer textarea {
+  position: relative;
+  z-index: 2;
   display: block;
   margin: 0;
   box-sizing: border-box;
@@ -1564,6 +1722,8 @@ button:not(:disabled) {
 }
 
 .send-button {
+  position: relative;
+  z-index: 2;
   display: grid;
   width: 40px;
   height: 40px;
@@ -1783,6 +1943,20 @@ button:not(:disabled) {
   font-size: 10px;
   line-height: 1.5;
   word-break: keep-all;
+}
+
+.feedback-sync {
+  min-height: 36px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 11px;
+  background: var(--surface-hover);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 620;
+  cursor: pointer;
 }
 
 .example-stack {
@@ -2501,6 +2675,7 @@ button:not(:disabled) {
   .hero-description {
     font-size: 13px;
   }
+
 }
 
 @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
@@ -2520,6 +2695,16 @@ button:not(:disabled) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .composer,
+  .composer::before {
+    transition-duration: 150ms;
+  }
+
+  .composer.is-prism {
+    animation: none;
+    background-position: 0 0, 50% 50%;
+  }
+
   .message-assistant .message-content.is-streaming > p:last-child::after,
   .streaming-status-pulse {
     animation: none;

@@ -69,11 +69,46 @@ test("keeps Persona evidence and privacy guardrails explicit", async () => {
   assert.match(page, /personaExamples: personaExamples/);
   assert.match(page, /\/api\/persona-examples/);
   assert.match(page, /feedbackStorage/);
+  assert.match(page, /aria-haspopup="menu"/);
+  assert.match(page, /model: chatModel/);
+  assert.match(page, /model-picker-trigger/);
+  assert.match(page, /personaSyncConsent/);
+  assert.match(page, /Legacy browser data stays local until the user explicitly chooses to sync it/);
+  assert.match(page, /onSyncExamples=\{syncLocalExamples\}/);
+  assert.match(page, /onDeleteSyncedExamples=\{deleteSyncedExamples\}/);
+  assert.match(page, /서버 예시 삭제하고 이 브라우저에만 보관/);
   assert.match(route, /GOOGLE_GENERATIVE_AI_API_KEY/);
-  assert.match(route, /gemini-3\.6-flash/);
+  assert.match(route, /isChatModelId\(body\.model\)/);
+  assert.match(route, /model: google\(selectedModel\)/);
+  assert.match(route, /thinkingLevel: selectedModel === DEFAULT_CHAT_MODEL \? "medium" : "minimal"/);
+  const chatModels = await readFile(
+    new URL("../app/ai/chat-models.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(chatModels, /"gemini-3\.5-flash-lite"/);
+  assert.match(chatModels, /"gemini-3\.6-flash"/);
+  assert.match(chatModels, /Lightning/);
+  assert.match(chatModels, /Prism/);
+  assert.match(css, /\.composer\.is-prism/);
+  const thinkingLogo = await readFile(
+    new URL("../app/lightframe-thinking-orb.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(thinkingLogo, /const DIAMOND =/);
+  assert.match(thinkingLogo, /context\.lineTo\(x \+ halfWidth \* breath, y\)/);
+  assert.match(thinkingLogo, /context\.lineTo\(x, y \+ halfHeight \* breath\)/);
+  assert.doesNotMatch(thinkingLogo, /SPARKS|traceSpark/);
   assert.match(route, /result\.fullStream/);
   assert.match(route, /readPersonaExamples/);
   assert.match(route, /MAX_INJECTED_PERSONA_EXAMPLES/);
+  assert.match(route, /readBoundedJson\(request, MAX_REQUEST_BYTES\)/);
+  assert.match(route, /REQUEST_TOO_LARGE/);
+  const requestSecurity = await readFile(
+    new URL("../app/api/request-security.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(requestSecurity, /function isSameOrigin/);
+  assert.match(requestSecurity, /function isRateLimited/);
   assert.match(systemPrompt, /실제 권율 본인이 아니라/);
   assert.match(systemPrompt, /확인되지 않은 율의 경험/);
   assert.match(systemPrompt, /율이 직접 검토한 Persona 예시/);
@@ -86,6 +121,8 @@ test("keeps Persona evidence and privacy guardrails explicit", async () => {
   );
   assert.match(feedbackRoute, /access: "private"/);
   assert.match(feedbackRoute, /BLOB_READ_WRITE_TOKEN/);
+  assert.match(feedbackRoute, /await del\(pathnameFor\(profileId\)\)/);
+  assert.match(feedbackRoute, /readBoundedJson\(request, MAX_REQUEST_BYTES\)/);
   const wiki = await readFile(new URL("../app/wiki-workspace.tsx", import.meta.url), "utf8");
   assert.match(wiki, /light-intelligence:wiki:v1/);
   assert.match(wiki, /율 위키/);

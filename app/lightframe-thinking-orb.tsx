@@ -42,8 +42,14 @@ function paintDiamond(context: CanvasRenderingContext2D, time: number) {
   context.beginPath();
   traceDiamond(context, time);
   context.fillStyle = gradient;
-  context.shadowColor = COLORS[3];
-  context.shadowBlur = 6;
+  context.save();
+  context.filter = "blur(5px)";
+  context.globalAlpha = 0.24;
+  context.fill();
+  context.restore();
+  context.beginPath();
+  traceDiamond(context, time);
+  context.fillStyle = gradient;
   context.fill();
 }
 

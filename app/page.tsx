@@ -41,6 +41,7 @@ import {
   MAX_PERSONA_EXAMPLES,
   type PersonaExample,
 } from "./ai/persona-examples";
+import { CHAT_MODELS, DEFAULT_CHAT_MODEL, isChatModelId, type ChatModelId } from "./ai/chat-models";
 import {
   getPersonaResponse,
   TRAIT_CATALOG,
@@ -58,6 +59,7 @@ type ChatMessage = {
   thoughtSummary?: string;
   fallbackCode?: ChatFailureCode;
   source?: "gemini" | "local";
+  model?: ChatModelId;
   trace?: PersonaTrace;
   feedback?: FeedbackValue;
 };
@@ -127,7 +129,9 @@ const STORAGE_KEYS = {
   settings: "light-intelligence:settings",
   personaExamples: "light-intelligence:persona-examples:v1",
   personaProfileId: "light-intelligence:persona-profile-id:v1",
+  personaSyncConsent: "light-intelligence:persona-sync-consent:v1",
   theme: "light-intelligence:theme",
+  model: "light-intelligence:chat-model:v1",
 };
 
 const createId = () =>
@@ -244,6 +248,8 @@ export default function Home() {
   const [thinkingPhase, setThinkingPhase] = useState<ThinkingPhase>(null);
   const [hydrated, setHydrated] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [chatModel, setChatModel] = useState<ChatModelId>(DEFAULT_CHAT_MODEL);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [settings, setSettings] =
     useState<PersonaSettings>(DEFAULT_SETTINGS);
   const [openPanel, setOpenPanel] = useState<
@@ -258,7 +264,7 @@ export default function Home() {
     useState<FeedbackDraft | null>(null);
   const [personaExamples, setPersonaExamples] = useState<PersonaExample[]>([]);
   const [feedbackStorage, setFeedbackStorage] = useState<
-    "checking" | "synced" | "offline"
+    "checking" | "synced" | "offline" | "local"
   >("checking");
   const [hasUnseen, setHasUnseen] = useState(false);
   const [workspace, setWorkspace] = useState<"chat" | "wiki">("chat");
@@ -278,6 +284,7 @@ export default function Home() {
       DEFAULT_SETTINGS,
     );
     const storedTheme = window.localStorage.getItem(STORAGE_KEYS.theme);
+    const storedModel = window.localStorage.getItem(STORAGE_KEYS.model);
     const storedExamples = readStoredValue<PersonaExample[]>(
       STORAGE_KEYS.personaExamples,
       [],
@@ -288,11 +295,14 @@ export default function Home() {
       setSettings(storedSettings);
       setPersonaExamples(storedExamples.slice(-MAX_PERSONA_EXAMPLES));
       setTheme(storedTheme === "light" ? "light" : "dark");
+      setChatModel(isChatModelId(storedModel) ? storedModel : DEFAULT_CHAT_MODEL);
       setHydrated(true);
     });
 
-    const profileId =
-      window.localStorage.getItem(STORAGE_KEYS.personaProfileId) ?? createId();
+    const storedProfileId = window.localStorage.getItem(STORAGE_KEYS.personaProfileId);
+    const profileId = storedProfileId && /^[a-z0-9-]{16,128}$/i.test(storedProfileId)
+      ? storedProfileId
+      : createId();
     window.localStorage.setItem(STORAGE_KEYS.personaProfileId, profileId);
 
     void fetch(`/api/persona-examples?profileId=${encodeURIComponent(profileId)}`)
@@ -308,16 +318,12 @@ export default function Home() {
             STORAGE_KEYS.personaExamples,
             JSON.stringify(remoteExamples),
           );
-        } else if (storedExamples.length) {
-          const migration = await fetch("/api/persona-examples", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              profileId,
-              examples: storedExamples.slice(-MAX_PERSONA_EXAMPLES),
-            }),
-          });
-          if (!migration.ok) throw new Error("Feedback migration unavailable");
+          window.localStorage.setItem(STORAGE_KEYS.personaSyncConsent, "yes");
+        } else {
+          // Legacy browser data stays local until the user explicitly chooses to sync it.
+          setPersonaExamples(storedExamples.slice(-MAX_PERSONA_EXAMPLES));
+          setFeedbackStorage("local");
+          return;
         }
         setFeedbackStorage("synced");
       })
@@ -334,6 +340,11 @@ export default function Home() {
     window.localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
   }, [hydrated, settings]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    window.localStorage.setItem(STORAGE_KEYS.model, chatModel);
+  }, [chatModel, hydrated]);
+
   const savePersonaExamples = async (next: PersonaExample[]) => {
     const normalized = next.slice(-MAX_PERSONA_EXAMPLES);
     setPersonaExamples(normalized);
@@ -341,6 +352,11 @@ export default function Home() {
       STORAGE_KEYS.personaExamples,
       JSON.stringify(normalized),
     );
+
+    if (window.localStorage.getItem(STORAGE_KEYS.personaSyncConsent) !== "yes") {
+      setFeedbackStorage("local");
+      return;
+    }
 
     const profileId = window.localStorage.getItem(STORAGE_KEYS.personaProfileId);
     if (!profileId) {
@@ -357,6 +373,31 @@ export default function Home() {
       });
       if (!response.ok) throw new Error("Feedback sync unavailable");
       setFeedbackStorage("synced");
+    } catch {
+      setFeedbackStorage("offline");
+    }
+  };
+
+  const syncLocalExamples = () => {
+    if (personaExamples.length > 0 && feedbackStorage === "local") {
+      window.localStorage.setItem(STORAGE_KEYS.personaSyncConsent, "yes");
+      void savePersonaExamples(personaExamples);
+    }
+  };
+
+  const deleteSyncedExamples = async () => {
+    const profileId = window.localStorage.getItem(STORAGE_KEYS.personaProfileId);
+    if (!profileId || feedbackStorage !== "synced") return;
+    setFeedbackStorage("checking");
+    try {
+      const response = await fetch("/api/persona-examples", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId, examples: [] }),
+      });
+      if (!response.ok) throw new Error("Feedback deletion failed");
+      window.localStorage.removeItem(STORAGE_KEYS.personaSyncConsent);
+      setFeedbackStorage("local");
     } catch {
       setFeedbackStorage("offline");
     }
@@ -476,6 +517,7 @@ export default function Home() {
             content: messageContent,
           })),
           settings,
+          model: chatModel,
           personaExamples: personaExamples.slice(-MAX_PERSONA_EXAMPLES),
         }),
         signal: controller.signal,
@@ -502,6 +544,9 @@ export default function Home() {
         role: "assistant",
         content: "",
         source: "gemini",
+        model: isChatModelId(response.headers.get("X-Light-Model"))
+          ? response.headers.get("X-Light-Model") as ChatModelId
+          : chatModel,
         trace: localResult.trace,
       };
       if (!retryOriginal) setMessages((current) => [...current, assistantMessage]);
@@ -885,7 +930,7 @@ export default function Home() {
                           <strong>Light Intelligence</strong>
                           <span>
                             {message.source === "gemini"
-                              ? "Gemini · AI 응답"
+                              ? `${message.model ? CHAT_MODELS[message.model].label : "Gemini"} · AI 응답`
                               : "Local fallback"}
                           </span>
                         </div>
@@ -1084,7 +1129,7 @@ export default function Home() {
         </AnimatePresence>
 
         <div className="composer-zone">
-          <form className="composer" onSubmit={handleSubmit}>
+          <form className={`composer ${chatModel === DEFAULT_CHAT_MODEL ? "is-prism" : ""}`} onSubmit={handleSubmit}>
             <textarea
               ref={textareaRef}
               value={input}
@@ -1095,6 +1140,44 @@ export default function Home() {
               rows={1}
               disabled={isResponding}
             />
+            <div className="model-picker">
+              <button
+                className="model-picker-trigger pressable"
+                type="button"
+                aria-label={`모델 선택: ${CHAT_MODELS[chatModel].label} ${CHAT_MODELS[chatModel].description}`}
+                aria-haspopup="menu"
+                aria-expanded={modelMenuOpen}
+                disabled={isResponding}
+                onClick={() => setModelMenuOpen((open) => !open)}
+              >
+                <span>{CHAT_MODELS[chatModel].label}</span>
+                <ChevronDown size={13} aria-hidden="true" />
+              </button>
+              {modelMenuOpen && (
+                <div className="model-picker-menu" role="menu" aria-label="응답 모델">
+                  {(Object.keys(CHAT_MODELS) as ChatModelId[]).map((modelId) => (
+                    <button
+                      key={modelId}
+                      className={`model-picker-option pressable ${chatModel === modelId ? "is-selected" : ""}`}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={chatModel === modelId}
+                      onClick={() => {
+                        setChatModel(modelId);
+                        setModelMenuOpen(false);
+                      }}
+                    >
+                      <span className="model-picker-copy">
+                        <span>{CHAT_MODELS[modelId].label}</span>
+                        <span>{CHAT_MODELS[modelId].description}</span>
+                      </span>
+                      {chatModel === modelId && <Check size={14} aria-hidden="true" />}
+                    </button>
+                  ))}
+                  <span className="model-picker-note" title="실제 청구 여부는 연결된 Google 프로젝트의 요금 등급에 따라 달라져요.">무료 등급 지원</span>
+                </div>
+              )}
+            </div>
             <motion.button
               className="send-button pressable"
               type={isResponding ? "button" : "submit"}
@@ -1134,6 +1217,8 @@ export default function Home() {
           feedbackCount={personaExamples.length}
           feedbackStorage={feedbackStorage}
           examples={personaExamples}
+          onSyncExamples={syncLocalExamples}
+          onDeleteSyncedExamples={deleteSyncedExamples}
           onDeleteExample={deletePersonaExample}
         />
         )}
@@ -1166,6 +1251,8 @@ export default function Home() {
                 feedbackCount={personaExamples.length}
                 feedbackStorage={feedbackStorage}
                 examples={personaExamples}
+                onSyncExamples={syncLocalExamples}
+                onDeleteSyncedExamples={deleteSyncedExamples}
                 onDeleteExample={deletePersonaExample}
               />
             )}
@@ -1201,12 +1288,16 @@ function InspectorContent({
   feedbackCount,
   feedbackStorage,
   examples,
+  onSyncExamples,
+  onDeleteSyncedExamples,
   onDeleteExample,
 }: {
   message?: ChatMessage;
   feedbackCount: number;
-  feedbackStorage: "checking" | "synced" | "offline";
+  feedbackStorage: "checking" | "synced" | "offline" | "local";
   examples: PersonaExample[];
+  onSyncExamples: () => void;
+  onDeleteSyncedExamples: () => void;
   onDeleteExample: (exampleId: string) => void;
 }) {
   return (
@@ -1262,9 +1353,21 @@ function InspectorContent({
             ? "비공개 서버 저장소에 동기화됐고, 다음 Gemini 요청에는 필요한 예시만 포함돼."
             : feedbackStorage === "checking"
               ? "피드백 저장 상태를 확인하는 중이야."
-              : "서버 저장소가 아직 연결되지 않아 이 브라우저에 임시 보관 중이야."} Foundation
+              : feedbackStorage === "local"
+                ? "현재 브라우저에만 저장돼. 비공개 서버에 보내려면 아래에서 직접 선택해."
+                : "서버 저장소에 연결하지 못해 이 브라우저에만 보관 중이야."} Foundation
           Model 자체를 학습했다고 표현하지 않아.
         </p>
+        {feedbackStorage === "local" && examples.length > 0 && (
+          <button className="feedback-sync pressable" type="button" onClick={onSyncExamples}>
+            검토된 예시를 비공개 서버에 저장
+          </button>
+        )}
+        {feedbackStorage === "synced" && (
+          <button className="feedback-sync pressable" type="button" onClick={onDeleteSyncedExamples}>
+            서버 예시 삭제하고 이 브라우저에만 보관
+          </button>
+        )}
         <p className="feedback-guide">
           답변을 받은 뒤 그 아래의 <strong>율 같음</strong> 또는 <strong>조금 다름</strong>을 눌러 기록해.
         </p>

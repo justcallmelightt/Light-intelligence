@@ -8,6 +8,9 @@ import {
 } from "../../ai/persona-examples";
 import type { PersonaSettings } from "../../persona-engine";
 import { classifyGeminiError } from "../../chat-failure";
+import { DEFAULT_CHAT_MODEL, isChatModelId } from "../../ai/chat-models";
+import { readBoundedJson } from "../read-bounded-json";
+import { isRateLimited, isSameOrigin } from "../request-security";
 
 export const maxDuration = 30;
 
@@ -17,9 +20,8 @@ const MAX_TOTAL_LENGTH = 20_000;
 const MAX_EXAMPLE_PROMPT_LENGTH = 1_200;
 const MAX_EXAMPLE_RESPONSE_LENGTH = 2_000;
 const MAX_EXAMPLE_NOTE_LENGTH = 500;
-const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_REQUESTS = 12;
-const requestBuckets = new Map<string, { count: number; resetAt: number }>();
+const MAX_REQUEST_BYTES = 128 * 1024;
 
 const DEFAULT_SETTINGS: PersonaSettings = {
   honesty: 85,
@@ -130,71 +132,72 @@ const readPersonaExamples = (value: unknown): PersonaExample[] => {
   return examples.slice(-MAX_INJECTED_PERSONA_EXAMPLES);
 };
 
-const isSameOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  if (!origin || !host) return true;
-  try {
-    return new URL(origin).host === host;
-  } catch {
-    return false;
-  }
-};
-
-const isRateLimited = (request: Request) => {
-  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const key = forwardedFor || "anonymous";
-  const now = Date.now();
-  const bucket = requestBuckets.get(key);
-  if (!bucket || bucket.resetAt <= now) {
-    requestBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > RATE_LIMIT_REQUESTS;
-};
-
 export async function POST(request: Request) {
+  const responseHeaders = { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" };
   if (!isSameOrigin(request)) {
     return Response.json(
       { code: "FORBIDDEN", message: "Cross-origin requests are not allowed." },
-      { status: 403 },
+      { status: 403, headers: responseHeaders },
     );
   }
 
-  if (isRateLimited(request)) {
+  if (isRateLimited(request, "chat", RATE_LIMIT_REQUESTS)) {
     return Response.json(
       { code: "RATE_LIMITED", message: "Please wait before trying again." },
-      { status: 429, headers: { "Retry-After": "60" } },
+      { status: 429, headers: { ...responseHeaders, "Retry-After": "60" } },
     );
   }
 
   if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
     return Response.json(
       { code: "AI_NOT_CONFIGURED", message: "Gemini API key is not configured." },
-      { status: 503 },
+      { status: 503, headers: responseHeaders },
     );
   }
 
   try {
-    const body = (await request.json()) as Record<string, unknown>;
+    const parsed = await readBoundedJson(request, MAX_REQUEST_BYTES);
+    if (!parsed.ok) {
+      return Response.json(
+        { code: parsed.tooLarge ? "REQUEST_TOO_LARGE" : "INVALID_REQUEST", message: "The request body is invalid or too large." },
+        { status: parsed.tooLarge ? 413 : 400, headers: responseHeaders },
+      );
+    }
+    if (!parsed.value || typeof parsed.value !== "object" || Array.isArray(parsed.value)) {
+      return Response.json({ code: "INVALID_REQUEST", message: "A valid request is required." }, { status: 400, headers: responseHeaders });
+    }
+    const body = parsed.value as Record<string, unknown>;
+    if (body.model !== undefined && !isChatModelId(body.model)) {
+      return Response.json(
+        { code: "INVALID_MODEL", message: "This model is not available." },
+        { status: 400, headers: responseHeaders },
+      );
+    }
+    const selectedModel = body.model ?? (
+      isChatModelId(process.env.GEMINI_MODEL) ? process.env.GEMINI_MODEL : DEFAULT_CHAT_MODEL
+    );
     const messages = readMessages(body.messages);
     const personaExamples = readPersonaExamples(body.personaExamples);
     if (!messages) {
       return Response.json(
         { code: "INVALID_REQUEST", message: "A valid conversation is required." },
-        { status: 400 },
+        { status: 400, headers: responseHeaders },
       );
     }
 
     const result = streamText({
-      model: google(process.env.GEMINI_MODEL ?? "gemini-3.6-flash"),
+      model: google(selectedModel),
       system: buildSystemPrompt(readSettings(body.settings), personaExamples),
       messages,
       temperature: 0.85,
       maxOutputTokens: 1_200,
       providerOptions: {
-        google: { thinkingConfig: { includeThoughts: true } },
+        google: {
+          thinkingConfig: {
+            includeThoughts: true,
+            thinkingLevel: selectedModel === DEFAULT_CHAT_MODEL ? "medium" : "minimal",
+          },
+        },
       },
     });
 
@@ -231,14 +234,15 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type": "application/x-ndjson; charset=utf-8",
         "Cache-Control": "no-store",
-        "X-Light-Model": process.env.GEMINI_MODEL ?? "gemini-3.6-flash",
+        "X-Content-Type-Options": "nosniff",
+        "X-Light-Model": selectedModel,
       },
     });
   } catch (error) {
     console.error("Gemini chat request failed", error);
     return Response.json(
       { code: "AI_REQUEST_FAILED", message: "Gemini request failed." },
-      { status: 502 },
+      { status: 502, headers: responseHeaders },
     );
   }
 }

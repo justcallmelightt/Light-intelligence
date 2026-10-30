@@ -16,7 +16,7 @@ Light Intelligence는 기능과 관계없는 개인정보를 요구하거나 수
 
 ## 기본은 사용자의 기기 안에서 시작합니다.
 
-현재 Light Intelligence의 대화 기록, 설정, 교정 기록, 검토된 Persona 예시와 Local 위키 문서는 기본적으로 사용 중인 브라우저의 `localStorage`에 저장됩니다.
+현재 Light Intelligence의 대화 기록, 설정, 교정 기록, 검토된 Persona 예시와 Local 위키 문서는 기본적으로 사용 중인 브라우저의 `localStorage`에 저장됩니다. 검토된 Persona 예시를 비공개 Vercel Blob에 저장하는 동작은 사용자가 Persona 패널에서 직접 동기화를 선택한 경우에만 이루어집니다. 서버에 저장된 예시는 서버에서 삭제하고 브라우저에만 남길 수 있습니다.
 
 이 데이터는 별도의 사용자 계정 데이터베이스에 자동으로 업로드되지 않습니다. 브라우저의 사이트 데이터를 삭제하면 해당 기기에 저장된 Light Intelligence 데이터도 함께 삭제될 수 있습니다.
 
@@ -26,7 +26,7 @@ Light Intelligence는 사용자의 정보를 서버에 모으기보다, 가능�
 
 Gemini가 설정된 경우 AI 답변을 만들기 위해 현재 대화의 최근 메시지, Persona 표현 강도 설정과 사용자가 직접 승인한 최근 Persona 예시가 Google Gemini API로 전송될 수 있습니다.
 
-Local 위키 문서는 Gemini에 자동으로 전송하지 않습니다. `율 같음` 또는 교정 저장을 통해 사용자가 직접 승인한 Persona 예시만 다음 답변을 만드는 과정에 제한적으로 반영합니다.
+Local 위키 문서는 Gemini에 자동으로 전송하지 않습니다. `율 같음` 또는 교정 저장을 통해 사용자가 직접 승인한 Persona 예시는 다음 답변에 반영됩니다. 기기 안에만 저장된 예시도 답변 생성 요청 시 Gemini로 전송될 수 있으며, 별도 Vercel Blob 동기화 여부와는 다릅니다.
 
 외부 AI Provider로 전송되는 정보는 해당 Provider의 정책에 따라 처리될 수 있습니다. 따라서 민감한 개인정보나 Secret은 AI 대화에 입력하지 않는 것을 원칙으로 합니다.
 

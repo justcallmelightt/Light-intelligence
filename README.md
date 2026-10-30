@@ -27,7 +27,8 @@ Local Persona Engine으로 안전하게 전환합니다.
 
 ## 주요 기능
 
-- Gemini 3.6 Flash 기반 Streaming AI 대화와 Local Persona 자동 Fallback
+- Lightning(Gemini 3.5 Flash-Lite)과 Prism(Gemini 3.6 Flash) 선택,
+  생각량 설정에 따른 Streaming AI 대화와 Local Persona 자동 Fallback
 - 자기 이해, 일상, 취향과 선택, 진로와 성장, 창업, 프로젝트, 관계와 감정,
   개발과 디자인 등 여러 맥락에 대한 율 기반 응답
 - 답변에 사용한 Self Model 영역, 판단 기준과 근거 수준 표시
@@ -46,7 +47,7 @@ Local Persona Engine으로 안전하게 전환합니다.
 ## 기술 스택
 
 - **Frontend:** Next.js 16, React 19, TypeScript 5
-- **AI:** Vercel AI SDK, Google Gemini 3.6 Flash, Server-side System Prompt
+- **AI:** Vercel AI SDK, Google Gemini 3.5 Flash-Lite·3.6 Flash, Server-side System Prompt
 - **UI & Motion:** CSS, Motion, Lucide React
 - **Build & Runtime:** Vinext, Vite 8, Cloudflare Workers 호환 Runtime
 - **Quality:** ESLint, Node.js Test Runner, TypeScript Type Check
@@ -59,13 +60,16 @@ Local Persona Engine으로 안전하게 전환합니다.
 - Gemini가 설정된 경우 AI 답변을 만들기 위해 현재 대화의 최근 메시지와 표현 강도
   설정을 Google Gemini API로 전송합니다.
 - Local 위키는 Gemini에 자동으로 전송하지 않습니다.
-- `율 같음` 또는 교정 저장으로 율이 직접 승인한 Persona 예시는 Vercel Blob의
-  비공개 저장소에 동기화됩니다. 다음 답변을 만들 때 최근 8개까지 Gemini에 전송되며,
-  저장 전 화면에서 질문과 답변을 확인할 수 있습니다.
+- `율 같음` 또는 교정 저장으로 승인한 Persona 예시는 기본적으로 브라우저에 저장됩니다.
+  비공개 Vercel Blob 동기화는 사용자가 직접 선택해야 하며, 저장된 예시는 다음 답변에
+  반영됩니다. 서버에 저장된 예시는 서버에서 삭제하고 브라우저에만 남길 수 있습니다.
 - Vercel Blob 환경 변수가 연결되지 않은 개발 환경에서는 피드백을 브라우저에 임시 보관하고,
   화면에 서버 동기화가 연결되지 않았음을 표시합니다.
 - 위키 문서마다 `나만 보기`와 `친한 사람` 공개 범위를 기록할 수 있습니다.
 - Gemini API Key는 Server 환경 변수에서만 읽으며 Client Bundle에 포함하지 않습니다.
+- 모델 선택은 서버의 두 모델 허용 목록으로 제한합니다. 무료 사용을 위해서는 연결된
+  Google AI Studio 프로젝트가 실제 무료 등급인지 별도로 확인해야 하며, 무료 한도
+  초과 시 유료 모델로 자동 전환하지 않습니다.
 - Chat API는 동일 출처 요청만 허용하고, 입력 길이와 최근 대화 수를 제한하며,
   과도한 호출에는 기본 Rate Limit을 적용합니다.
 - Google의 무료 Tier 정책상 전송한 콘텐츠가 Google 제품 개선에 사용될 수 있으므로,
@@ -91,9 +95,10 @@ npm run dev
 `.env.local`의 `GOOGLE_GENERATIVE_AI_API_KEY`에 Google AI Studio에서 발급한 Key를
 입력합니다. Key가 없거나 무료 사용량을 초과해도 Local Persona Engine으로 동작합니다.
 
-기기 밖에도 검토된 Persona 피드백을 남기려면 Vercel의 **Storage → Blob**에서 비공개
-Store를 연결한 뒤, 생성된 `BLOB_READ_WRITE_TOKEN`을 Vercel 환경 변수와 `.env.local`에
-등록합니다. Token은 절대 `NEXT_PUBLIC_` 환경 변수나 Git에 넣지 않습니다.
+검토된 Persona 피드백을 기기 밖에 저장하려면 앱의 Persona 패널에서 직접 동기화를 선택해야
+합니다. 이를 사용하려면 Vercel의 **Storage → Blob**에서 비공개 Store를 연결한 뒤,
+생성된 `BLOB_READ_WRITE_TOKEN`을 Vercel 환경 변수와 `.env.local`에 등록합니다. Token은
+절대 `NEXT_PUBLIC_` 환경 변수나 Git에 넣지 않습니다.
 
 브라우저에서 출력된 Local URL을 엽니다.
 
