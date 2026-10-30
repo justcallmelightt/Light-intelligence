@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 
 const SIZE = 64;
-const COLORS = ["#007c70", "#1737d7", "#7b14ed", "#dd19e9", "#f06ca8", "#ffdc58", "#c8c5ee"];
+// Lightframe 2.0's diamond and palette come from the supplied SVG artwork.
+const COLORS = ["#008254", "#0101d9", "#8100ff", "#e934f7", "#f6de5c"];
 const RGB_COLORS = COLORS.map((color) => [1, 3, 5].map((offset) => parseInt(color.slice(offset, offset + 2), 16)));
 const GRADIENT_STEPS = 32;
 const GRADIENT_CYCLES_PER_SECOND = 0.22;
@@ -16,13 +17,7 @@ const TEXTURE_POINTS = Array.from({ length: 130 }, (_, index) => ({
   light: index % 3 !== 0,
 }));
 
-type Spark = { x: number; y: number; width: number; height: number; phase: number };
-
-const SPARKS: Spark[] = [
-  { x: 39, y: 31, width: 21, height: 29, phase: 0 },
-  { x: 13, y: 15, width: 8, height: 14, phase: 1.8 },
-  { x: 18, y: 49, width: 8, height: 12, phase: 3.5 },
-];
+const DIAMOND = { x: 32, y: 32, halfWidth: 18.7, halfHeight: 28.7 };
 
 function spectrumColor(position: number) {
   const wrapped = ((position % 1) + 1) % 1;
@@ -34,23 +29,18 @@ function spectrumColor(position: number) {
   return `rgb(${from.map((channel, index) => Math.round(channel + (to[index] - channel) * blend)).join(" ")})`;
 }
 
-function traceSpark(context: CanvasRenderingContext2D, spark: Spark, time: number) {
-  // Concave curves make the four tapered rays meet in a soft, luminous core.
-  const breath = 1 + Math.sin(time * 2.1 + spark.phase) * 0.055;
-  const width = spark.width * breath;
-  const height = spark.height * breath;
-  const { x, y } = spark;
-  context.moveTo(x, y - height);
-  context.bezierCurveTo(x + width * 0.13, y - height * 0.22, x + width * 0.22, y - height * 0.13, x + width, y);
-  context.bezierCurveTo(x + width * 0.22, y + height * 0.13, x + width * 0.13, y + height * 0.22, x, y + height);
-  context.bezierCurveTo(x - width * 0.13, y + height * 0.22, x - width * 0.22, y + height * 0.13, x - width, y);
-  context.bezierCurveTo(x - width * 0.22, y - height * 0.13, x - width * 0.13, y - height * 0.22, x, y - height);
+function traceDiamond(context: CanvasRenderingContext2D, time: number) {
+  const breath = 1 + Math.sin(time * 2.1) * 0.018;
+  const { x, y, halfWidth, halfHeight } = DIAMOND;
+  context.moveTo(x, y - halfHeight * breath);
+  context.lineTo(x + halfWidth * breath, y);
+  context.lineTo(x, y + halfHeight * breath);
+  context.lineTo(x - halfWidth * breath, y);
   context.closePath();
 }
 
-function paintSparks(context: CanvasRenderingContext2D, time: number) {
-  // One diagonal field spans all three sparks. Less than one palette cycle is
-  // visible at once, so no hue appears as a second, disconnected band.
+function paintDiamond(context: CanvasRenderingContext2D, time: number) {
+  // Keep the original single-direction gradient flow within the new silhouette.
   const gradient = context.createLinearGradient(6, 58, 60, 6);
   const phase = time * GRADIENT_CYCLES_PER_SECOND;
   for (let index = 0; index <= GRADIENT_STEPS; index += 1) {
@@ -58,33 +48,32 @@ function paintSparks(context: CanvasRenderingContext2D, time: number) {
     gradient.addColorStop(stop, spectrumColor(stop * VISIBLE_SPECTRUM - phase));
   }
   context.beginPath();
-  for (const spark of SPARKS) traceSpark(context, spark, time);
+  traceDiamond(context, time);
   context.fillStyle = gradient;
   context.shadowColor = COLORS[3];
-  context.shadowBlur = 8;
+  context.shadowBlur = 6;
   context.fill();
 
-  // Clip the light and fine grain to the filled silhouettes: dimension without
-  // restoring the bright outline that made the stars look flat and sticker-like.
+  // The sheen, facet, and fine grain stay clipped to the diamond with no outline.
   context.save();
   context.shadowBlur = 0;
   context.clip();
 
-  const sheen = context.createRadialGradient(35, 23, 1, 39, 32, 24);
+  const sheen = context.createRadialGradient(26, 19, 1, 32, 29, 30);
   sheen.addColorStop(0, "rgba(255, 255, 255, 0.48)");
   sheen.addColorStop(0.38, "rgba(255, 255, 255, 0.18)");
   sheen.addColorStop(1, "rgba(255, 255, 255, 0)");
   context.fillStyle = sheen;
   context.fillRect(0, 0, SIZE, SIZE);
 
-  const depth = context.createLinearGradient(19, 8, 52, 55);
+  const depth = context.createLinearGradient(18, 6, 50, 57);
   depth.addColorStop(0, "rgba(255, 255, 255, 0.13)");
   depth.addColorStop(0.48, "rgba(0, 0, 0, 0)");
   depth.addColorStop(1, "rgba(5, 7, 25, 0.3)");
   context.fillStyle = depth;
   context.fillRect(0, 0, SIZE, SIZE);
 
-  const satin = context.createLinearGradient(17, 58, 53, 5);
+  const satin = context.createLinearGradient(16, 57, 51, 7);
   satin.addColorStop(0, "rgba(255, 255, 255, 0)");
   satin.addColorStop(0.36, "rgba(255, 255, 255, 0.01)");
   satin.addColorStop(0.52, "rgba(255, 255, 255, 0.25)");
@@ -93,26 +82,25 @@ function paintSparks(context: CanvasRenderingContext2D, time: number) {
   context.fillStyle = satin;
   context.fillRect(0, 0, SIZE, SIZE);
 
-  // A broad inner facet survives the 36px display size, unlike sub-pixel grain.
+  // A restrained diagonal facet preserves the material quality at 36px.
   context.beginPath();
-  context.moveTo(39, 8);
-  context.bezierCurveTo(38, 20, 36, 27, 39, 31);
-  context.bezierCurveTo(35, 31, 32, 29, 30, 26);
-  context.bezierCurveTo(35, 24, 38, 15, 39, 8);
+  context.moveTo(32, 5);
+  context.lineTo(32, 32);
+  context.lineTo(21, 17);
   context.closePath();
-  const facet = context.createLinearGradient(30, 11, 41, 32);
+  const facet = context.createLinearGradient(20, 12, 37, 31);
   facet.addColorStop(0, "rgba(255, 255, 255, 0.04)");
-  facet.addColorStop(0.65, "rgba(255, 255, 255, 0.26)");
+  facet.addColorStop(0.65, "rgba(255, 255, 255, 0.16)");
   facet.addColorStop(1, "rgba(255, 255, 255, 0.05)");
   context.fillStyle = facet;
   context.fill();
 
   context.beginPath();
-  context.moveTo(39, 31);
-  context.bezierCurveTo(45, 32, 49, 31, 54, 31);
-  context.bezierCurveTo(46, 35, 41, 44, 39, 54);
+  context.moveTo(32, 32);
+  context.lineTo(50, 32);
+  context.lineTo(32, 59);
   context.closePath();
-  context.fillStyle = "rgba(8, 11, 33, 0.13)";
+  context.fillStyle = "rgba(8, 11, 33, 0.08)";
   context.fill();
 
   for (const point of TEXTURE_POINTS) {
@@ -146,7 +134,7 @@ export function LightframeThinkingOrb() {
     const paint = (time: number) => {
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.clearRect(0, 0, SIZE, SIZE);
-      paintSparks(context, time);
+      paintDiamond(context, time);
     };
 
     const stop = () => {
