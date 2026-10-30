@@ -9,14 +9,6 @@ const RGB_COLORS = COLORS.map((color) => [1, 3, 5].map((offset) => parseInt(colo
 const GRADIENT_STEPS = 32;
 const GRADIENT_CYCLES_PER_SECOND = 0.22;
 const VISIBLE_SPECTRUM = 0.78;
-const fraction = (value: number) => value - Math.floor(value);
-const TEXTURE_POINTS = Array.from({ length: 130 }, (_, index) => ({
-  x: fraction(Math.sin(index * 127.1 + 4.7) * 43758.5453) * SIZE,
-  y: fraction(Math.sin(index * 311.7 + 8.3) * 22578.1459) * SIZE,
-  radius: index % 9 === 0 ? 1.05 : 0.68,
-  light: index % 3 !== 0,
-}));
-
 const DIAMOND = { x: 32, y: 32, halfWidth: 18.7, halfHeight: 28.7 };
 
 function spectrumColor(position: number) {
@@ -53,65 +45,6 @@ function paintDiamond(context: CanvasRenderingContext2D, time: number) {
   context.shadowColor = COLORS[3];
   context.shadowBlur = 6;
   context.fill();
-
-  // The sheen, facet, and fine grain stay clipped to the diamond with no outline.
-  context.save();
-  context.shadowBlur = 0;
-  context.clip();
-
-  const sheen = context.createRadialGradient(26, 19, 1, 32, 29, 30);
-  sheen.addColorStop(0, "rgba(255, 255, 255, 0.48)");
-  sheen.addColorStop(0.38, "rgba(255, 255, 255, 0.18)");
-  sheen.addColorStop(1, "rgba(255, 255, 255, 0)");
-  context.fillStyle = sheen;
-  context.fillRect(0, 0, SIZE, SIZE);
-
-  const depth = context.createLinearGradient(18, 6, 50, 57);
-  depth.addColorStop(0, "rgba(255, 255, 255, 0.13)");
-  depth.addColorStop(0.48, "rgba(0, 0, 0, 0)");
-  depth.addColorStop(1, "rgba(5, 7, 25, 0.3)");
-  context.fillStyle = depth;
-  context.fillRect(0, 0, SIZE, SIZE);
-
-  const satin = context.createLinearGradient(16, 57, 51, 7);
-  satin.addColorStop(0, "rgba(255, 255, 255, 0)");
-  satin.addColorStop(0.36, "rgba(255, 255, 255, 0.01)");
-  satin.addColorStop(0.52, "rgba(255, 255, 255, 0.25)");
-  satin.addColorStop(0.68, "rgba(255, 255, 255, 0)");
-  satin.addColorStop(1, "rgba(255, 255, 255, 0)");
-  context.fillStyle = satin;
-  context.fillRect(0, 0, SIZE, SIZE);
-
-  // A restrained diagonal facet preserves the material quality at 36px.
-  context.beginPath();
-  context.moveTo(32, 5);
-  context.lineTo(32, 32);
-  context.lineTo(21, 17);
-  context.closePath();
-  const facet = context.createLinearGradient(20, 12, 37, 31);
-  facet.addColorStop(0, "rgba(255, 255, 255, 0.04)");
-  facet.addColorStop(0.65, "rgba(255, 255, 255, 0.16)");
-  facet.addColorStop(1, "rgba(255, 255, 255, 0.05)");
-  context.fillStyle = facet;
-  context.fill();
-
-  context.beginPath();
-  context.moveTo(32, 32);
-  context.lineTo(50, 32);
-  context.lineTo(32, 59);
-  context.closePath();
-  context.fillStyle = "rgba(8, 11, 33, 0.08)";
-  context.fill();
-
-  for (const point of TEXTURE_POINTS) {
-    context.fillStyle = point.light
-      ? "rgba(255, 255, 255, 0.2)"
-      : "rgba(6, 8, 24, 0.16)";
-    context.beginPath();
-    context.arc(point.x, point.y, point.radius, 0, Math.PI * 2);
-    context.fill();
-  }
-  context.restore();
 }
 
 export function LightframeThinkingOrb() {
