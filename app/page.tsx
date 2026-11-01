@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { AnimatePresence, motion, useAnimationControls, useReducedMotion } from "motion/react";
+import { LiquidGlass } from "@vepando/liquid-glass-react";
 import {
   ArrowDown,
   ArrowUp,
@@ -1131,6 +1132,15 @@ export default function Home() {
         </AnimatePresence>
 
         <div className="composer-zone">
+          <LiquidGlass
+            className="composer-glass"
+            radius={999}
+            tint={theme}
+            blur={3}
+            refraction={0.72}
+            dispersion={0.015}
+            specular={0.24}
+          >
           <form className="composer" onSubmit={handleSubmit}>
             {prismSweepId > 0 && (
               <span className="composer-prism-clip" aria-hidden="true">
@@ -1204,6 +1214,7 @@ export default function Home() {
               )}
             </motion.button>
           </form>
+          </LiquidGlass>
         </div>
       </section>
       )}

@@ -40,7 +40,9 @@ export function PrismComposerSweep() {
       palette: lightframePalette,
       direction: "ltr",
       sweepMs: 570,
-      outroMs: 80,
+      // Leave a visible, smooth fade after the band reaches the far edge.
+      // The 80ms reference outro was effectively a snap-off at this scale.
+      outroMs: 260,
       peakAlpha: 1.3,
       bandTight: 10,
       brightness: 1.4,

@@ -750,7 +750,7 @@ button:not(:disabled) {
 .chat-column {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   background: var(--canvas);
@@ -844,7 +844,7 @@ button:not(:disabled) {
   width: min(100%, 808px);
   min-height: 100%;
   margin: 0 auto;
-  padding: 34px 24px 52px;
+  padding: 34px 24px 118px;
 }
 
 .empty-state {
@@ -1489,13 +1489,16 @@ button:not(:disabled) {
 }
 
 .composer-zone {
-  position: relative;
+  position: absolute;
   z-index: 6;
+  right: 0;
+  bottom: 0;
+  left: 0;
   padding: 14px max(22px, var(--safe-right))
     calc(12px + var(--safe-bottom)) max(22px, var(--safe-left));
-  background: color-mix(in srgb, var(--canvas) 84%, transparent);
-  backdrop-filter: blur(24px) saturate(1.15);
-  -webkit-backdrop-filter: blur(24px) saturate(1.15);
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .composer-zone::before {
@@ -1504,30 +1507,48 @@ button:not(:disabled) {
   right: 0;
   left: 0;
   height: 22px;
-  background: linear-gradient(to top, var(--canvas), transparent);
+  background: none;
   content: "";
   pointer-events: none;
+}
+
+.composer-glass {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  border: 1px solid color-mix(in srgb, var(--reflection) 18%, var(--hairline));
+  border-top-color: color-mix(in srgb, var(--reflection) 24%, var(--hairline));
+  --lg-tint: rgba(255, 255, 255, 0.58);
+  --lg-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+  --lg-inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.composer-glass.lg--dark {
+  --lg-tint: rgba(42, 42, 45, 0.52);
+  --lg-inner-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    inset 0 -8px 18px -16px rgba(255, 255, 255, 0.16);
+}
+
+.composer-glass.lg--fallback.lg--dark {
+  --lg-tint: rgba(42, 42, 45, 0.62);
+}
+
+.composer-glass:focus-within {
+  border-color: color-mix(in srgb, var(--focus) 55%, var(--hairline));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 12%, transparent);
 }
 
 .composer {
   position: relative;
   display: flex;
-  width: min(100%, 760px);
+  width: 100%;
   min-height: 54px;
   margin: 0 auto;
   align-items: center;
   gap: 8px;
   padding: 7px 7px 7px 18px;
-  border: 1px solid var(--hairline-strong);
-  border-top-color: color-mix(in srgb, var(--reflection) 52%, var(--hairline));
+  border: 0;
   border-radius: var(--radius-composer);
-  background: var(--surface-raised);
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22),
-    inset 0 1px 0 color-mix(in srgb, var(--reflection) 24%, transparent);
-  backdrop-filter: blur(28px) saturate(1.15);
-  -webkit-backdrop-filter: blur(28px) saturate(1.15);
-  isolation: isolate;
-  transition: box-shadow 420ms ease, border-color 420ms ease;
+  background: transparent;
 }
 
 .composer::before {
@@ -1652,13 +1673,6 @@ button:not(:disabled) {
 @keyframes model-menu-in {
   from { opacity: 0; transform: translateY(5px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.composer:focus-within {
-  border-color: color-mix(in srgb, var(--focus) 55%, var(--hairline));
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.25),
-    0 0 0 3px color-mix(in srgb, var(--focus) 12%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--reflection) 28%, transparent);
 }
 
 .composer-prism-clip {
@@ -2669,8 +2683,7 @@ button:not(:disabled) {
 }
 
 @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
-  .topbar,
-  .composer-zone {
+  .topbar {
     background: var(--canvas);
   }
 
@@ -2681,6 +2694,10 @@ button:not(:disabled) {
   .wiki-editor,
   .new-answer-button {
     background: var(--surface-solid);
+  }
+
+  .composer-glass {
+    background: rgba(32, 32, 38, 0.8);
   }
 }
 

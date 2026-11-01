@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import "@vepando/liquid-glass-react/style.css";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
