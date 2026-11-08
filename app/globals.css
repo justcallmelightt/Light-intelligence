@@ -1750,6 +1750,12 @@ button:not(:disabled) {
   opacity: 1;
 }
 
+.send-button-icon {
+  display: grid;
+  grid-area: 1 / 1;
+  place-items: center;
+}
+
 .inspector {
   position: relative;
   z-index: 4;

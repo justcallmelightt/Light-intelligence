@@ -938,10 +938,17 @@ export default function Home() {
                     <motion.article
                       className={`message message-${message.role}`}
                       key={message.id}
-                      initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      initial={{
+                        opacity: 0,
+                        x: reduceMotion ? 0 : message.role === "user" ? 16 : 0,
+                        y: reduceMotion ? 0 : message.role === "user" ? 5 : 8,
+                        scale: reduceMotion ? 1 : message.role === "user" ? 0.98 : 1,
+                      }}
+                      animate={{ opacity: 1, x: 0, y: 0, scale: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={motionTransition}
+                      transition={reduceMotion
+                        ? { duration: 0.15 }
+                        : { type: "spring", stiffness: 450, damping: 42, mass: 1, opacity: { duration: 0.2 } }}
                       onClick={() =>
                         message.role === "assistant" && setSelectedMessageId(message.id)
                       }
@@ -1234,14 +1241,23 @@ export default function Home() {
               aria-label={isResponding ? "응답 중지" : "메시지 보내기"}
               disabled={!isResponding && !input.trim()}
               onClick={isResponding ? stopResponse : undefined}
-              whileTap={{ scale: 0.9 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.9 }}
               transition={motionTransition}
             >
-              {isResponding ? (
-                <Square size={15} fill="currentColor" />
-              ) : (
-                <ArrowUp size={19} />
-              )}
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={isResponding ? "stop" : "send"}
+                  className="send-button-icon"
+                  initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.74 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.74 }}
+                  transition={reduceMotion
+                    ? { duration: 0.15 }
+                    : { type: "spring", stiffness: 540, damping: 42, mass: 1, opacity: { duration: 0.14 } }}
+                >
+                  {isResponding ? <Square size={15} fill="currentColor" /> : <ArrowUp size={19} />}
+                </motion.span>
+              </AnimatePresence>
             </motion.button>
           </form>
           </LiquidGlass>
