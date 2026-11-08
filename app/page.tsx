@@ -1148,10 +1148,13 @@ export default function Home() {
               className="new-answer-button pressable"
               type="button"
               onClick={jumpToLatest}
-              initial={{ opacity: 0, y: 12, scale: 0.96 }}
+              initial={{ opacity: 0, y: reduceMotion ? 0 : 8, scale: reduceMotion ? 1 : 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={motionTransition}
+              exit={{ opacity: 0, y: reduceMotion ? 0 : 4, scale: reduceMotion ? 1 : 0.98 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+              transition={reduceMotion
+                ? { duration: 0.15 }
+                : { type: "spring", stiffness: 500, damping: 46, mass: 1, opacity: { duration: 0.18 } }}
             >
               <ArrowDown size={15} /> 새 답변 보기
             </motion.button>

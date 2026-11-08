@@ -1473,14 +1473,14 @@ button:not(:disabled) {
 .new-answer-button {
   position: absolute;
   z-index: 7;
-  right: 50%;
-  bottom: calc(112px + var(--safe-bottom));
+  left: 50%;
+  bottom: calc(92px + var(--safe-bottom));
   display: inline-flex;
   min-height: 38px;
   align-items: center;
   gap: 7px;
   padding: 7px 12px;
-  transform: translateX(50%);
+  translate: -50% 0;
   border: 1px solid var(--hairline-strong);
   border-radius: 999px;
   background: var(--surface-raised);
