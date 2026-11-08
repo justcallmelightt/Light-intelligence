@@ -844,7 +844,7 @@ button:not(:disabled) {
   width: min(100%, 808px);
   min-height: 100%;
   margin: 0 auto;
-  padding: 34px 24px 118px;
+  padding: 34px 24px calc(150px + var(--safe-bottom));
 }
 
 .empty-state {
@@ -940,8 +940,6 @@ button:not(:disabled) {
 
 .message {
   max-width: 100%;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 160px;
 }
 
 .message-user {
@@ -969,8 +967,15 @@ button:not(:disabled) {
 .mini-mark {
   width: 24px;
   height: 24px;
-  border-radius: 8px;
-  font-size: 12px;
+  border: 0;
+  background: transparent;
+}
+
+.mini-mark img {
+  display: block;
+  width: 16px;
+  height: 24px;
+  object-fit: contain;
 }
 
 .assistant-label strong {
@@ -2531,7 +2536,7 @@ button:not(:disabled) {
   }
 
   .message-width {
-    padding: 24px 16px 42px;
+    padding: 24px 16px calc(150px + var(--safe-bottom));
   }
 
   .empty-state {

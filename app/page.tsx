@@ -275,7 +275,9 @@ export default function Home() {
   const responseControllerRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const messageWidthRef = useRef<HTMLDivElement | null>(null);
   const shouldAutoScrollRef = useRef(true);
+  const lastScrollTopRef = useRef(0);
 
   useEffect(() => {
     const storedMessages = readStoredValue<ChatMessage[]>(
@@ -425,6 +427,20 @@ export default function Home() {
       requestAnimationFrame(() => setHasUnseen(true));
     }
   }, [isResponding, messages, thinkingPhase]);
+
+  useEffect(() => {
+    const content = messageWidthRef.current;
+    const scrollElement = scrollRef.current;
+    if (!content || !scrollElement) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!shouldAutoScrollRef.current) return;
+      scrollElement.scrollTo({ top: scrollElement.scrollHeight, behavior: "instant" });
+      lastScrollTopRef.current = scrollElement.scrollTop;
+    });
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(
     () => () => {
@@ -746,6 +762,7 @@ export default function Home() {
       top: scrollElement.scrollHeight,
       behavior: reduceMotion ? "auto" : "smooth",
     });
+    lastScrollTopRef.current = scrollElement?.scrollTop ?? 0;
     setHasUnseen(false);
   };
 
@@ -753,7 +770,12 @@ export default function Home() {
     const element = scrollRef.current;
     if (!element) return;
     const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-    shouldAutoScrollRef.current = distance < 140;
+    if (element.scrollTop < lastScrollTopRef.current - 2) {
+      shouldAutoScrollRef.current = false;
+    } else if (distance < 140) {
+      shouldAutoScrollRef.current = true;
+    }
+    lastScrollTopRef.current = element.scrollTop;
     if (distance < 140) setHasUnseen(false);
   };
 
@@ -870,7 +892,7 @@ export default function Home() {
         </header>
 
         <div className="message-scroll" ref={scrollRef} onScroll={onScroll}>
-          <div className="message-width">
+          <div className="message-width" ref={messageWidthRef}>
             {messages.length === 0 ? (
               <motion.section
                 className="empty-state"
@@ -916,8 +938,8 @@ export default function Home() {
                     <motion.article
                       className={`message message-${message.role}`}
                       key={message.id}
-                      initial={{ opacity: 0, y: 8, scale: 0.985, filter: "blur(6px)" }}
-                      animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+                      initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+                      animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                       transition={motionTransition}
                       onClick={() =>
@@ -926,9 +948,15 @@ export default function Home() {
                     >
                       {message.role === "assistant" && (
                         <div className="assistant-label">
-                          <span className="mini-mark" aria-hidden="true">
-                            L
-                          </span>
+                          <motion.span
+                            className="mini-mark"
+                            aria-hidden="true"
+                            initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.82 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={reduceMotion ? { duration: 0.15 } : { type: "spring", stiffness: 420, damping: 41, mass: 1, delay: 0.05 }}
+                          >
+                            <img src="/lightframe-mark.svg" alt="" />
+                          </motion.span>
                           <strong>Light Intelligence</strong>
                           <span>
                             {message.source === "gemini"
