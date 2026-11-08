@@ -413,19 +413,18 @@ export default function Home() {
 
   useEffect(() => {
     if (!messages.length) return;
-    const lastMessage = messages.at(-1);
-    if (isResponding && lastMessage?.role === "assistant" && !lastMessage.content) return;
     if (shouldAutoScrollRef.current) {
       const scrollElement = scrollRef.current;
       scrollElement?.scrollTo({
         top: scrollElement.scrollHeight,
-        behavior: reduceMotion ? "auto" : "smooth",
+        // Streaming content changes faster than a smooth scroll can finish.
+        behavior: "instant",
       });
       requestAnimationFrame(() => setHasUnseen(false));
     } else if (messages.at(-1)?.role === "assistant") {
       requestAnimationFrame(() => setHasUnseen(true));
     }
-  }, [isResponding, messages, reduceMotion]);
+  }, [isResponding, messages, thinkingPhase]);
 
   useEffect(
     () => () => {
