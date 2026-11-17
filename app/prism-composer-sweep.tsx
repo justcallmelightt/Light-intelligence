@@ -39,7 +39,7 @@ export function PrismComposerSweep() {
     const sweep = playSweep(shader, {
       palette: lightframePalette,
       direction: "ltr",
-      sweepMs: 570,
+      sweepMs: 680,
       // Leave a visible, smooth fade after the band reaches the far edge.
       // The 80ms reference outro was effectively a snap-off at this scale.
       outroMs: 260,

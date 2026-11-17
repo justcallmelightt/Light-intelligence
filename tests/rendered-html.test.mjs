@@ -96,7 +96,7 @@ test("keeps Persona evidence and privacy guardrails explicit", async () => {
   const prismSweep = await readFile(new URL("../app/prism-composer-sweep.tsx", import.meta.url), "utf8");
   assert.match(prismSweep, /createShader\(/);
   assert.match(prismSweep, /playSweep\(/);
-  assert.match(prismSweep, /sweepMs: 570/);
+  assert.match(prismSweep, /sweepMs: 680/);
   assert.match(prismSweep, /"#f6de5c"/);
   assert.doesNotMatch(css, /--prism-band/);
   assert.match(page, /setPrismSweepId\(\(current\) => current \+ 1\)/);
